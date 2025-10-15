@@ -1,12 +1,15 @@
+from ast import Tuple
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
 from pypika import Field, Query, Table
+from pypika.functions import Lower
+from typing import List, Tuple
 
 from ami_helper.datamodel import SCOPE_TAGS
 
 
-def find_hashtag_tuples(scope: str) -> list[str]:
+def find_hashtag_tuples(scope: str, search_string: str) -> List[Tuple[str, str]]:
     """
     Given a scope, query AMI and return a list of hashtag names for that scope.
     """
@@ -17,9 +20,9 @@ def find_hashtag_tuples(scope: str) -> list[str]:
     hashtags = Table("tbl")
     q = (
         Query.from_(hashtags)
-        .select(hashtags.NAME)
+        .select(hashtags.NAME, hashtags.SCOPE)
         .distinct()
-        .where(hashtags.SCOPE == "PMGL1")
+        .where(Lower(hashtags.NAME).like(f"%{search_string.lower()}%"))
     )
     query_text = str(q).replace('"', "`").replace(" FROM `tbl`", "")
 
@@ -36,4 +39,4 @@ def find_hashtag_tuples(scope: str) -> list[str]:
     assert isinstance(result, DOMObject)
 
     rows = result.get_rows()
-    return [row["NAME"] for row in rows]
+    return [(row["NAME"], row["SCOPE"]) for row in rows]

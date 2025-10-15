@@ -33,10 +33,10 @@ def test_find_hashtag_tuples_sql_command():
     ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
-        find_hashtag_tuples("scope_extra")
+        find_hashtag_tuples("scope_extra", "fork")
         expected_cmd = (
             'SearchQuery -catalog="short_001:production" '
             '-entity="HASHTAGS" '
-            "-mql=\"SELECT DISTINCT `NAME` WHERE `SCOPE`='PMGL1'\""
+            "-mql=\"SELECT DISTINCT `NAME`,`SCOPE` WHERE LOWER(`NAME`) LIKE '%fork%'\""
         )
         mock_client.execute.assert_called_once_with(expected_cmd, format="dom_object")

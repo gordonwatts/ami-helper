@@ -32,7 +32,7 @@ def list_hash_tuples(
 
     from .ami import find_hashtag_tuples
 
-    hashtag_list = find_hashtag_tuples(scope)
+    hashtag_list = find_hashtag_tuples(scope, hashtags[0])
     for possiblehash in hashtag_list:
         print(possiblehash)
 
