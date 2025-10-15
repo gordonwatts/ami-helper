@@ -1,7 +1,9 @@
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from .datamodel import SCOPE_TAGS
+from pypika import Field, Query, Table
+
+from ami_helper.datamodel import SCOPE_TAGS
 
 
 def find_hashtag_tuples(scope: str) -> list[str]:
@@ -11,6 +13,16 @@ def find_hashtag_tuples(scope: str) -> list[str]:
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
 
+    # Query
+    hashtags = Table("tbl")
+    q = (
+        Query.from_(hashtags)
+        .select(hashtags.NAME)
+        .distinct()
+        .where(hashtags.SCOPE == "PMGL1")
+    )
+    query_text = str(q).replace('"', "`").replace(" FROM `tbl`", "")
+
     # Parse the scope and look up evgen short tag from data model
     scope_short = scope.split("_")[0]
     evgen_short = SCOPE_TAGS[scope_short].evgen.short
@@ -18,8 +30,7 @@ def find_hashtag_tuples(scope: str) -> list[str]:
     cmd = (
         f'SearchQuery -catalog="{evgen_short}_001:production" '
         '-entity="HASHTAGS" '
-        f'-mql="SELECT DISTINCT `NAME` '
-        f"WHERE `SCOPE` = 'PMGL1'\""
+        f'-mql="{query_text}"'
     )
     result = ami.execute(cmd, format="dom_object")
     assert isinstance(result, DOMObject)
