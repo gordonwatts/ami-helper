@@ -37,6 +37,6 @@ def test_find_hashtag_tuples_sql_command():
         expected_cmd = (
             'SearchQuery -catalog="short_001:production" '
             '-entity="HASHTAGS" '
-            "-mql=\"SELECT DISTINCT `NAME` WHERE `SCOPE` = 'PMGL1'\""
+            "-mql=\"SELECT DISTINCT `NAME` WHERE `SCOPE`='PMGL1'\""
         )
         mock_client.execute.assert_called_once_with(expected_cmd, format="dom_object")
