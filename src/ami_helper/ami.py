@@ -9,7 +9,7 @@ from typing import List, Tuple
 from ami_helper.datamodel import SCOPE_TAGS
 
 
-def find_hashtag_tuples(scope: str, search_string: str) -> List[Tuple[str, str]]:
+def find_hashtag(scope: str, search_string: str) -> List[Tuple[str, str]]:
     """
     Given a scope, query AMI and return a list of hashtag names for that scope.
     """
