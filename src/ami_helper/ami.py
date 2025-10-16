@@ -6,10 +6,14 @@ from pypika import Field, Query, Table
 from pypika.functions import Lower
 from typing import List, Tuple
 
-from ami_helper.datamodel import SCOPE_TAGS
+from ami_helper.datamodel import (
+    SCOPE_TAGS,
+    CentralPageHashAddress,
+    make_central_page_hash_address,
+)
 
 
-def find_hashtag(scope: str, search_string: str) -> List[Tuple[str, str]]:
+def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]:
     """
     Given a scope, query AMI and return a list of hashtag names for that scope.
     """
@@ -39,4 +43,6 @@ def find_hashtag(scope: str, search_string: str) -> List[Tuple[str, str]]:
     assert isinstance(result, DOMObject)
 
     rows = result.get_rows()
-    return [(row["NAME"], row["SCOPE"]) for row in rows]
+    return [
+        make_central_page_hash_address(scope, row["SCOPE"], row["NAME"]) for row in rows
+    ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping
+from typing import Dict, List, Mapping, Optional
 
 
 @dataclass(frozen=True)
@@ -80,3 +80,35 @@ SCOPE_TAGS: Dict[str, ScopeTags] = {
 # Backwards-compatibility alias, if any external code expects the old name.
 # Note: structure is different (dataclasses), so attribute access will differ.
 scopetag_dict = SCOPE_TAGS
+
+
+@dataclass
+class CentralPageHashAddress:
+    """
+    Hash tag address paried with a scope - gives a "unique" set of
+    data samples when quired against ami.
+    """
+
+    scope: str
+    hash_tags: List[Optional[str]]
+
+
+_hash_scope_index = {
+    "PMGL1": 0,
+    "PMGL2": 1,
+    "PMGL3": 2,
+    "PMGL4": 3,
+}
+
+
+def make_central_page_hash_address(
+    scope: str, hash_scope: str, hash_value: str
+) -> CentralPageHashAddress:
+    index = _hash_scope_index.get(hash_scope, None)
+    if index is None:
+        raise ValueError(
+            f"Unknown hash scope: {hash_scope} (legal ones: {_hash_scope_index.keys()})"
+        )
+    hash_values: List[Optional[str]] = [""] * 4
+    hash_values[index] = hash_value
+    return CentralPageHashAddress(scope=scope, hash_tags=hash_values)
