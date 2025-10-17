@@ -144,27 +144,18 @@ def find_missing_tag(
 
 
 def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashAddress]:
-    missing_index = [i for i, t in enumerate(s_addr.hash_tags) if not t]
-    if len(missing_index) == 0:
-        return [s_addr]
+    results = []
+    stack = [s_addr]
 
-    return find_missing_tag(s_addr, missing_index[0])
+    while len(stack) > 0:
+        current_addr = stack.pop()
+        missing_index = [i for i, t in enumerate(current_addr.hash_tags) if not t]
+        if len(missing_index) == 0:
+            results.append(current_addr)
+            continue
 
-    # scope = s_addr.scope
+        # Find possible tags for the missing index
+        possible_tags = find_missing_tag(current_addr, missing_index[0])
+        stack.extend(possible_tags)
 
-    # # Find which tags are missing
-    # missing_indices = [i for i, tag in enumerate(s_addr.hash_tags) if not tag]
-
-    # if not missing_indices:
-    #     return [s_addr]
-
-    # filled_addresses = [s_addr]
-
-    # for missing_index in missing_indices:
-    #     new_filled_addresses = []
-    #     for addr in filled_addresses:
-    #         found_addresses = find_missing_tag(addr, missing_index)
-    #         new_filled_addresses.extend(found_addresses)
-    #     filled_addresses = new_filled_addresses
-
-    # return filled_addresses
+    return results
