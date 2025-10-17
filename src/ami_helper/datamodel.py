@@ -112,3 +112,16 @@ def make_central_page_hash_address(
     hash_values: List[Optional[str]] = [""] * 4
     hash_values[index] = hash_value
     return CentralPageHashAddress(scope=scope, hash_tags=hash_values)
+
+
+def add_hash_to_addr(
+    addr: CentralPageHashAddress, hash_scope: str, hash_value: str
+) -> CentralPageHashAddress:
+    index = _hash_scope_index.get(hash_scope, None)
+    if index is None:
+        raise ValueError(
+            f"Unknown hash scope: {hash_scope} (legal ones: {_hash_scope_index.keys()})"
+        )
+    hash_values = addr.hash_tags.copy()  # Create a copy to avoid mutation
+    hash_values[index] = hash_value
+    return CentralPageHashAddress(scope=addr.scope, hash_tags=hash_values)
