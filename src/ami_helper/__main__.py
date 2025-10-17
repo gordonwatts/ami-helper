@@ -57,9 +57,7 @@ def list_hash_tuples(
     scope: ScopeEnum = typer.Argument(
         ..., help="Scope for the search. Valid values will be shown in help."
     ),
-    hashtags: list[str] = typer.Argument(
-        ..., min=1, help="List of hashtags (at least one)"
-    ),
+    hashtags: str = typer.Argument(..., help="List of hashtags (at least one)"),
     verbose: Annotated[
         int,
         typer.Option(
@@ -74,7 +72,7 @@ def list_hash_tuples(
 
     from .ami import find_hashtag
 
-    hashtag_list = find_hashtag(scope, hashtags[0])
+    hashtag_list = find_hashtag(scope, hashtags)
 
     if len(hashtag_list) > 0:
         from .ami import find_hashtag_tuples
