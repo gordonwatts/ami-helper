@@ -1,25 +1,35 @@
 from unittest.mock import patch, MagicMock
-from src.ami_helper.ami import find_hashtag, find_missing_tag
+import pytest
+import tempfile
+import diskcache
+from src.ami_helper.ami import find_hashtag, find_missing_tag, set_cache
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
 from src.ami_helper.datamodel import CentralPageHashAddress
 
 
+@pytest.fixture(autouse=True)
+def temp_cache():
+    """Create a temporary cache for each test and clean it up after."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cache = diskcache.Cache(tmpdir)
+        set_cache(cache)
+        yield cache
+        cache.close()
+        set_cache(None)  # Reset to default after test
+
+
 def test_find_hashtag_tuples_returns_names():
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = [
         {"NAME": "tag1", "SCOPE": "PMGL1"},
         {"NAME": "tag2", "SCOPE": "PMGL3"},
     ]
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"scope": MagicMock(evgen=MagicMock(short="short"))}
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         result = find_hashtag("scope_extra", "fork")
         assert len(result) == 2
         assert all("scope_extra" == r.scope for r in result)
@@ -28,33 +38,27 @@ def test_find_hashtag_tuples_returns_names():
 
 
 def test_find_hashtag_tuples_sql_command():
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"scope": MagicMock(evgen=MagicMock(short="short"))}
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         find_hashtag("scope_extra", "fork")
         expected_cmd = (
             'SearchQuery -catalog="short_001:production" '
             '-entity="HASHTAGS" '
             "-mql=\"SELECT DISTINCT `NAME`,`SCOPE` WHERE LOWER(`NAME`) LIKE '%fork%'\""
         )
-        mock_client.execute.assert_called_once_with(expected_cmd, format="dom_object")
+        mock_execute.assert_called_once_with(expected_cmd)
 
 
 def test_find_missing_tag_sql_command_with_two_tags():
     """Test that find_missing_tag generates correct SQL with two existing tags."""
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
 
@@ -64,15 +68,13 @@ def test_find_missing_tag_sql_command_with_two_tags():
     )
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         find_missing_tag(test_addr, missing_index=1)
 
         # Verify the SQL command structure
-        mock_client.execute.assert_called_once()
-        actual_cmd = mock_client.execute.call_args[0][0]
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
 
         # Check catalog and entity
         assert 'SearchQuery -catalog="mc15_001:production"' in actual_cmd
@@ -95,10 +97,8 @@ def test_find_missing_tag_sql_command_with_two_tags():
 
 def test_find_missing_tag_sql_command_with_one_tag():
     """Test that find_missing_tag generates correct SQL with one existing tag."""
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"mc23": MagicMock(evgen=MagicMock(short="mc23"))}
 
@@ -108,15 +108,13 @@ def test_find_missing_tag_sql_command_with_one_tag():
     )
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         find_missing_tag(test_addr, missing_index=3)
 
         # Verify the SQL command structure
-        mock_client.execute.assert_called_once()
-        actual_cmd = mock_client.execute.call_args[0][0]
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
 
         # Check catalog
         assert 'SearchQuery -catalog="mc23_001:production"' in actual_cmd
@@ -132,10 +130,8 @@ def test_find_missing_tag_sql_command_with_one_tag():
 
 def test_find_missing_tag_sql_structure():
     """Test the exact SQL structure generated by find_missing_tag."""
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
 
@@ -145,14 +141,12 @@ def test_find_missing_tag_sql_structure():
     )
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         find_missing_tag(test_addr, missing_index=2)
 
-        mock_client.execute.assert_called_once()
-        actual_cmd = mock_client.execute.call_args[0][0]
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
 
         # Extract the SQL from the command
         import re
@@ -191,13 +185,11 @@ def test_find_missing_tag_sql_structure():
 
 def test_find_missing_tag_returns_addresses():
     """Test that find_missing_tag returns correct CentralPageHashAddress objects."""
-    mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = [
         {"HASHTAGS.NAME": "newtag1", "HASHTAGS.SCOPE": "PMGL2"},
         {"HASHTAGS.NAME": "newtag2", "HASHTAGS.SCOPE": "PMGL2"},
     ]
-    mock_client.execute.return_value = mock_dom_object
 
     mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
 
@@ -206,10 +198,8 @@ def test_find_missing_tag_returns_addresses():
     )
 
     with patch(
-        "src.ami_helper.ami.pyAMI.client.Client", return_value=mock_client
-    ), patch("src.ami_helper.ami.AtlasAPI.init"), patch(
-        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
-    ):
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         result = find_missing_tag(test_addr, missing_index=1)
 
         # Should return 2 addresses

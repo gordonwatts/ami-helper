@@ -1,7 +1,9 @@
 import logging
 from ast import Tuple
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Optional, Tuple
 
+import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
@@ -16,6 +18,62 @@ from ami_helper.datamodel import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Global cache instance - can be overridden for testing
+_cache: Optional[diskcache.Cache] = None
+
+
+def get_cache() -> diskcache.Cache:
+    """Get or create the AMI query cache."""
+    global _cache
+    if _cache is None:
+        cache_dir = Path.home() / ".cache" / "ami-helper"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _cache = diskcache.Cache(str(cache_dir))
+        logger.debug(f"Initialized cache at {cache_dir}")
+    return _cache
+
+
+def set_cache(cache: Optional[diskcache.Cache]) -> None:
+    """Set the cache instance (useful for testing)."""
+    global _cache
+    _cache = cache
+
+
+def execute_ami_command(cmd: str) -> DOMObject:
+    """
+    Execute an AMI command with caching.
+
+    Parameters
+    ----------
+    cmd : str
+        The AMI command string to execute.
+
+    Returns
+    -------
+    DOMObject
+        The AMI result as a DOMObject.
+    """
+    cache = get_cache()
+
+    # Check cache first
+    cached_result = cache.get(cmd)
+    if cached_result is not None:
+        logger.debug(f"Cache hit for command: {cmd}")
+        return cached_result  # type: ignore
+
+    logger.debug(f"Cache miss, executing AMI command: {cmd}")
+
+    # Execute the command
+    ami = pyAMI.client.Client("atlas-replica")
+    AtlasAPI.init()
+    result = ami.execute(cmd, format="dom_object")
+    assert isinstance(result, DOMObject)
+
+    # Cache the result
+    cache.set(cmd, result)
+
+    return result
 
 
 def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]:
@@ -39,8 +97,6 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
     logger.info(
         f"Searching for hashtags containing '{search_string}' in scope '{scope}'"
     )
-    ami = pyAMI.client.Client("atlas-replica")
-    AtlasAPI.init()
 
     # Query
     hashtags = Table("tbl")
@@ -61,10 +117,8 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         '-entity="HASHTAGS" '
         f'-mql="{query_text}"'
     )
-    logger.debug(f"Executing AMI command: {cmd}")
-    result = ami.execute(cmd, format="dom_object")
-    assert isinstance(result, DOMObject)
 
+    result = execute_ami_command(cmd)
     rows = result.get_rows()
     logger.info(f"Found {len(rows)} hashtags matching '{search_string}'")
     return [
@@ -137,13 +191,8 @@ def find_missing_tag(
         '-entity="DATASET" '
         f'-sql="{query_text}"'
     )
-    logger.debug(f"Executing AMI command: {cmd}")
 
-    ami = pyAMI.client.Client("atlas-replica")
-    AtlasAPI.init()
-    result = ami.execute(cmd, format="dom_object")
-    assert isinstance(result, DOMObject)
-
+    result = execute_ami_command(cmd)
     rows = result.get_rows()
     return [
         add_hash_to_addr(s_addr, row["HASHTAGS.SCOPE"], row["HASHTAGS.NAME"])
