@@ -1,7 +1,6 @@
 import logging
-from ast import Tuple
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import diskcache
 import pyAMI.client
@@ -201,7 +200,7 @@ def find_missing_tag(
 
 
 def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashAddress]:
-    results = []
+    results: List[CentralPageHashAddress] = []
     stack = [s_addr]
 
     while len(stack) > 0:
@@ -213,9 +212,8 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
 
         # Find possible tags for the missing index
         possible_tags = find_missing_tag(current_addr, missing_index[0])
-        logging.info(
+        logger.info(
             f"Found {len(possible_tags)} hashtags for tags {', '.join([h for h in current_addr.hash_tags if h is not None])}"
         )
-        stack.extend(possible_tags)
 
     return results

@@ -86,7 +86,7 @@ scopetag_dict = SCOPE_TAGS
 class CentralPageHashAddress:
     """
     Hash tag address paried with a scope - gives a "unique" set of
-    data samples when quired against ami.
+    data samples when queried against ami.
     """
 
     scope: str

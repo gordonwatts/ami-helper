@@ -1,9 +1,6 @@
 import pytest
 
-from ami_helper.datamodel import (
-    CentralPageHashAddress,
-    make_central_page_hash_address,
-)
+from ami_helper.datamodel import CentralPageHashAddress, make_central_page_hash_address
 
 
 class TestMakeCentralPageHashAddress:

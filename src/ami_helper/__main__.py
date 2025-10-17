@@ -2,9 +2,11 @@
 #
 # SPDX-License-Identifier: MIT
 import logging
-import typer
-from typing import Annotated, Optional
 from enum import Enum
+from typing import Annotated, Optional
+
+import typer
+
 from .datamodel import SCOPE_TAGS
 
 
@@ -21,7 +23,7 @@ VALID_SCOPES = [scope.value for scope in ScopeEnum]
 app = typer.Typer()
 
 
-def verbose_callback(verbose: int):
+def verbose_callback(verbose: int) -> None:
     """Configure logging based on verbose flag count."""
     root_logger = logging.getLogger()
 

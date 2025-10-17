@@ -1,9 +1,12 @@
-from unittest.mock import patch, MagicMock
-import pytest
+import re
 import tempfile
+from unittest.mock import MagicMock, patch
+
 import diskcache
-from src.ami_helper.ami import find_hashtag, find_missing_tag, set_cache
+import pytest
+
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
+from src.ami_helper.ami import find_hashtag, find_missing_tag, set_cache
 from src.ami_helper.datamodel import CentralPageHashAddress
 
 
@@ -18,7 +21,7 @@ def temp_cache():
         set_cache(None)  # Reset to default after test
 
 
-def test_find_hashtag_tuples_returns_names():
+def test_find_hashtag_returns_names():
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = [
         {"NAME": "tag1", "SCOPE": "PMGL1"},
@@ -37,7 +40,7 @@ def test_find_hashtag_tuples_returns_names():
         assert result[1].hash_tags[2] == "tag2"
 
 
-def test_find_hashtag_tuples_sql_command():
+def test_find_hashtag_sql_command():
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []
 
@@ -149,8 +152,6 @@ def test_find_missing_tag_sql_structure():
         actual_cmd = mock_execute.call_args[0][0]
 
         # Extract the SQL from the command
-        import re
-
         sql_match = re.search(r'-sql="([^"]+)"', actual_cmd)
         assert sql_match, "Could not find SQL in command"
         sql = sql_match.group(1)
