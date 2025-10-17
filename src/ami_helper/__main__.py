@@ -54,8 +54,8 @@ def verbose_callback(verbose: int) -> None:
     root_logger.addHandler(handler)
 
 
-@app.command("list-hash-tuples")
-def list_hash_tuples(
+@app.command("find-hash-tuples")
+def find_hash_tuples(
     scope: ScopeEnum = typer.Argument(
         ..., help="Scope for the search. Valid values will be shown in help."
     ),
@@ -71,6 +71,9 @@ def list_hash_tuples(
         ),
     ] = 0,
 ):
+    """
+    List all hash-tag 4-tuples containing a string.
+    """
 
     from .ami import find_hashtag
 
