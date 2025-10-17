@@ -79,9 +79,10 @@ def list_hash_tuples(
     if len(hashtag_list) > 0:
         from .ami import find_hashtag_tuples
 
-        all_tags = find_hashtag_tuples(hashtag_list[0])
-        for t in all_tags:
-            print(", ".join([str(h) for h in t.hash_tags]))
+        for ht in hashtag_list:
+            all_tags = find_hashtag_tuples(ht)
+            for t in all_tags:
+                print(", ".join([str(h) for h in t.hash_tags]))
 
 
 if __name__ == "__main__":
