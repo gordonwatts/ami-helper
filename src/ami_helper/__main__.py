@@ -8,6 +8,7 @@ from typing import Annotated, Optional
 import typer
 
 from .datamodel import SCOPE_TAGS
+from .ruicio import find_datasets
 
 
 # Define valid scopes - can be easily modified in the future
@@ -101,7 +102,7 @@ def with_hashtags(
     hashtag_level3: str = typer.Argument(..., help="Third hashtag (mandatory)"),
     hashtag_level4: str = typer.Argument(..., help="Fourth hashtag (mandatory)"),
     content: str = typer.Option(
-        "envt",
+        "evnt",
         help="Data content of file (evnt, phys, physlite, or custom value like DAOD_LLP1)",
     ),
     verbose: Annotated[
@@ -137,7 +138,9 @@ def with_hashtags(
     if requested_content == "EVNT":
         ldns = evnt_ldns
     else:
-        pass
+        for ldn in evnt_ldns:
+            find_datasets(ldn, scope, requested_content)
+        ldns = []
 
     for ldn in ldns:
         print(ldn)
