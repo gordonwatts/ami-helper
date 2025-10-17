@@ -1,18 +1,21 @@
-from ast import Tuple
 import logging
+from ast import Tuple
+from typing import List, Tuple
+
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
 from pypika import Field, Query, Table
 from pypika.functions import Lower
-from typing import List, Tuple
 
 from ami_helper.datamodel import (
     SCOPE_TAGS,
     CentralPageHashAddress,
-    make_central_page_hash_address,
     add_hash_to_addr,
+    make_central_page_hash_address,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]:
@@ -33,6 +36,9 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         A list of CentralPageHashAddress objects constructed from AMI results.
 
     """
+    logger.info(
+        f"Searching for hashtags containing '{search_string}' in scope '{scope}'"
+    )
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
 
@@ -55,10 +61,12 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         '-entity="HASHTAGS" '
         f'-mql="{query_text}"'
     )
+    logger.debug(f"Executing AMI command: {cmd}")
     result = ami.execute(cmd, format="dom_object")
     assert isinstance(result, DOMObject)
 
     rows = result.get_rows()
+    logger.info(f"Found {len(rows)} hashtags matching '{search_string}'")
     return [
         make_central_page_hash_address(scope, row["SCOPE"], row["NAME"]) for row in rows
     ]
@@ -129,7 +137,7 @@ def find_missing_tag(
         '-entity="DATASET" '
         f'-sql="{query_text}"'
     )
-    logging.warning(f"Executing AMI command: {cmd}")
+    logger.debug(f"Executing AMI command: {cmd}")
 
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
@@ -156,6 +164,9 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
 
         # Find possible tags for the missing index
         possible_tags = find_missing_tag(current_addr, missing_index[0])
+        logging.info(
+            f"Found {len(possible_tags)} hashtags for tags {', '.join([h for h in current_addr.hash_tags if h is not None])}"
+        )
         stack.extend(possible_tags)
 
     return results
