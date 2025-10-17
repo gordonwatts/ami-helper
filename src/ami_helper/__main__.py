@@ -21,6 +21,11 @@ class ScopeEnum(str, Enum):
 VALID_SCOPES = [scope.value for scope in ScopeEnum]
 
 app = typer.Typer()
+files_app = typer.Typer()
+hash_app = typer.Typer()
+
+app.add_typer(files_app, name="datasets", help="Commands for working with datasets")
+app.add_typer(hash_app, name="hashtags", help="Commands for working with AMI hashes")
 
 
 def verbose_callback(verbose: int) -> None:
@@ -54,7 +59,7 @@ def verbose_callback(verbose: int) -> None:
     root_logger.addHandler(handler)
 
 
-@app.command("find-hash-tuples")
+@hash_app.command("find")
 def find_hash_tuples(
     scope: ScopeEnum = typer.Argument(
         ..., help="Scope for the search. Valid values will be shown in help."
@@ -72,20 +77,41 @@ def find_hash_tuples(
     ] = 0,
 ):
     """
-    List all hash-tag 4-tuples containing a string.
+    List all AMI hashtag 4-tuples containing a string.
     """
 
-    from .ami import find_hashtag
+    from .ami import find_hashtag, find_hashtag_tuples
 
     hashtag_list = find_hashtag(scope, hashtags)
 
     if len(hashtag_list) > 0:
-        from .ami import find_hashtag_tuples
-
         for ht in hashtag_list:
             all_tags = find_hashtag_tuples(ht)
             for t in all_tags:
-                print(", ".join([str(h) for h in t.hash_tags]))
+                print(" ".join([str(h) for h in t.hash_tags]))
+
+
+@files_app.command("with-hashtags")
+def with_hashtags(
+    scope: ScopeEnum = typer.Argument(
+        ..., help="Scope for the search. Valid values will be shown in help."
+    ),
+    hashtag_level1: str = typer.Argument(..., help="First hashtag (mandatory)"),
+    hashtag_level2: str = typer.Argument(..., help="Second hashtag (mandatory)"),
+    hashtag_level3: str = typer.Argument(..., help="Third hashtag (mandatory)"),
+    hashtag_level4: str = typer.Argument(..., help="Fourth hashtag (mandatory)"),
+):
+    """
+    Find files with specific hashtags.
+    """
+    # Minimal placeholder behavior — replace with AMI calls as needed.
+    print(
+        f"scope={scope} "
+        f"hashtag_level1={hashtag_level1} "
+        f"hashtag_level2={hashtag_level2} "
+        f"hashtag_level3={hashtag_level3} "
+        f"hashtag_level4={hashtag_level4}"
+    )
 
 
 if __name__ == "__main__":
