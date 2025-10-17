@@ -127,13 +127,17 @@ def with_hashtags(
         "phys": "DAOD_PHYS",
         "physlite": "DAOD_PHYSLITE",
     }
-    actual_content = content_mapping.get(content, content)
+    requested_content = content_mapping.get(content, content)
 
     addr = CentralPageHashAddress(
         scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]
     )
 
-    ldns = find_dids_with_hashtags(addr)
+    evnt_ldns = find_dids_with_hashtags(addr)
+    if requested_content == "EVNT":
+        ldns = evnt_ldns
+    else:
+        pass
 
     for ldn in ldns:
         print(ldn)

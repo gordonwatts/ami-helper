@@ -6,7 +6,12 @@ import diskcache
 import pytest
 
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
-from src.ami_helper.ami import find_hashtag, find_missing_tag, set_cache
+from src.ami_helper.ami import (
+    find_dids_with_hashtags,
+    find_hashtag,
+    find_missing_tag,
+    set_cache,
+)
 from src.ami_helper.datamodel import CentralPageHashAddress
 
 
@@ -212,3 +217,52 @@ def test_find_missing_tag_returns_addresses():
         # Should have the new tags at position 1 (order may vary)
         tags_at_position_1 = {r.hash_tags[1] for r in result}
         assert tags_at_position_1 == {"newtag1", "newtag2"}
+
+
+def test_find_dids_with_hashtags_command():
+    """Test that find_dids_with_hashtags generates the correct AMI command."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []
+
+    # Create an address with all 4 hashtags filled
+    test_addr = CentralPageHashAddress(
+        scope="mc23_13p6TeV", hash_tags=["Top", "TTbar", "Baseline", "PowhegPythia"]
+    )
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute:
+        find_dids_with_hashtags(test_addr)
+
+        # Verify the command structure
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Check the command format
+        assert actual_cmd.startswith("DatasetWBListDatasetsForHashtag")
+        assert '-scope="PMGL1,PMGL2,PMGL3,PMGL4"' in actual_cmd
+        assert '-name="Top,TTbar,Baseline,PowhegPythia"' in actual_cmd
+        assert '-operator="AND"' in actual_cmd
+
+
+def test_find_dids_with_hashtags_returns_filtered_ldns():
+    """Test that find_dids_with_hashtags filters results by scope."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {"ldn": "mc23_13p6TeV.123456.dataset1"},
+        {"ldn": "mc21_13TeV.654321.dataset2"},  # Different scope, should be filtered
+        {"ldn": "mc23_13p6TeV.789012.dataset3"},
+    ]
+
+    test_addr = CentralPageHashAddress(
+        scope="mc23_13p6TeV", hash_tags=["Top", "TTbar", "Baseline", "PowhegPythia"]
+    )
+
+    with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object):
+        result = find_dids_with_hashtags(test_addr)
+
+        # Should only return ldns matching the scope
+        assert len(result) == 2
+        assert "mc23_13p6TeV.123456.dataset1" in result
+        assert "mc23_13p6TeV.789012.dataset3" in result
+        assert "mc21_13TeV.654321.dataset2" not in result
