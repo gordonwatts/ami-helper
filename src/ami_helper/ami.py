@@ -200,6 +200,23 @@ def find_missing_tag(
 
 
 def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashAddress]:
+    """
+    Produce all fully-populated CentralPageHashAddress combinations reachable from
+    the provided partial address by filling missing hashtag slots. It does this by making
+    queires to AMI.
+
+    Parameters
+    ----------
+    s_addr:
+        A CentralPageHashAddress that may contain empty/None entries in its
+        hash_tags list. These represent missing tags to be discovered.
+
+    Returns
+    -------
+    List[CentralPageHashAddress]
+        A list of CentralPageHashAddress instances with no missing hashtag
+        entries (each represents one complete combination discovered).
+    """
     results: List[CentralPageHashAddress] = []
     stack = [s_addr]
 
