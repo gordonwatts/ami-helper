@@ -100,18 +100,43 @@ def with_hashtags(
     hashtag_level2: str = typer.Argument(..., help="Second hashtag (mandatory)"),
     hashtag_level3: str = typer.Argument(..., help="Third hashtag (mandatory)"),
     hashtag_level4: str = typer.Argument(..., help="Fourth hashtag (mandatory)"),
+    content: str = typer.Option(
+        "envt",
+        help="Data content of file (evnt, phys, physlite, or custom value like DAOD_LLP1)",
+    ),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
 ):
     """
     Find files with specific hashtags.
     """
-    # Minimal placeholder behavior — replace with AMI calls as needed.
-    print(
-        f"scope={scope} "
-        f"hashtag_level1={hashtag_level1} "
-        f"hashtag_level2={hashtag_level2} "
-        f"hashtag_level3={hashtag_level3} "
-        f"hashtag_level4={hashtag_level4}"
+    from .ami import find_dids_with_hashtags
+    from .datamodel import CentralPageHashAddress
+
+    # Map short names to full DAOD names, but allow any custom value
+    content_mapping = {
+        "evnt": "EVNT",
+        "phys": "DAOD_PHYS",
+        "physlite": "DAOD_PHYSLITE",
+    }
+    actual_content = content_mapping.get(content, content)
+
+    addr = CentralPageHashAddress(
+        scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]
     )
+
+    ldns = find_dids_with_hashtags(addr)
+
+    for ldn in ldns:
+        print(ldn)
 
 
 if __name__ == "__main__":
