@@ -232,5 +232,6 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
         logger.info(
             f"Found {len(possible_tags)} hashtags for tags {', '.join([h for h in current_addr.hash_tags if h is not None])}"
         )
+        stack.extend(possible_tags)
 
     return results
