@@ -1,4 +1,5 @@
 from ast import Tuple
+import logging
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
@@ -66,6 +67,30 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
 def find_missing_tag(
     s_addr: CentralPageHashAddress, missing_index: int
 ) -> List[CentralPageHashAddress]:
+    """
+    Query AMI to find candidate hashtag values for a single missing tag position.
+
+    This function constructs an AMI SQL query that selects datasets which have a
+    hashtag defined at the target PMGL scope corresponding to `missing_index`
+    and that also satisfy any other non-empty hashtag constraints already
+    present in `s_addr`. It returns one CentralPageHashAddress per matching
+    hashtag found, with the missing tag filled in.
+
+    Parameters
+    ----------
+    s_addr : CentralPageHashAddress
+        A partially-filled address whose `hash_tags` list may contain empty
+        entries. Other non-empty entries are used as constraints in the query.
+    missing_index : int
+        Zero-based index of the hashtag position to fill. This maps to an AMI
+        hashtag scope named "PMGL{missing_index + 1}".
+
+    Returns
+    -------
+    List[CentralPageHashAddress]
+        A list of CentralPageHashAddress objects derived from the AMI results,
+        each with the tag at `missing_index` set to a value found in AMI.
+    """
     # Build subqueries for each hashtag using pypika
     dataset = Table("DATASET")
     hashtags_result = Table("HASHTAGS")
@@ -104,6 +129,7 @@ def find_missing_tag(
         '-entity="DATASET" '
         f'-sql="{query_text}"'
     )
+    logging.warning(f"Executing AMI command: {cmd}")
 
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
@@ -111,47 +137,34 @@ def find_missing_tag(
     assert isinstance(result, DOMObject)
 
     rows = result.get_rows()
-    return [add_hash_to_addr(s_addr, row["SCOPE"], row["NAME"]) for row in rows]
+    return [
+        add_hash_to_addr(s_addr, row["HASHTAGS.SCOPE"], row["HASHTAGS.NAME"])
+        for row in rows
+    ]
 
 
-# def fill_in_missing_tags(
-#     s_addr: CentralPageHashAddress,
-# ) -> List[CentralPageHashAddress]:
-#     """
-#     Given a CentralPageHashAddress with some empty tags, return a list of
-#     CentralPageHashAddress with all combinations of the missing tags filled in.
-#     """
-#     scope = s_addr.scope
+def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashAddress]:
+    missing_index = [i for i, t in enumerate(s_addr.hash_tags) if not t]
+    if len(missing_index) == 0:
+        return [s_addr]
 
-#     # Find which tags are missing
-#     missing_indices = [i for i, tag in enumerate(s_addr.hash_tags) if not tag]
+    return find_missing_tag(s_addr, missing_index[0])
 
-#     if not missing_indices:
-#         return [s_addr]
+    # scope = s_addr.scope
 
-#     # First
+    # # Find which tags are missing
+    # missing_indices = [i for i, tag in enumerate(s_addr.hash_tags) if not tag]
 
-#     # # For each missing index, query AMI to find possible tags
-#     # possible_tags: List[List[str]] = []
-#     # for idx in missing_indices:
-#     #     hash_scope = list(make_central_page_hash_address._hash_scope_index.keys())[idx]
-#     #     tags = find_hashtag(s_addr.scope, "")
-#     #     tags_for_scope = [tag.hash_tags[idx] for tag in tags if tag.hash_tags[idx]]
-#     #     possible_tags.append(tags_for_scope)
+    # if not missing_indices:
+    #     return [s_addr]
 
-#     # # Generate all combinations of the possible tags
-#     # from itertools import product
+    # filled_addresses = [s_addr]
 
-#     # all_combinations = product(*possible_tags)
+    # for missing_index in missing_indices:
+    #     new_filled_addresses = []
+    #     for addr in filled_addresses:
+    #         found_addresses = find_missing_tag(addr, missing_index)
+    #         new_filled_addresses.extend(found_addresses)
+    #     filled_addresses = new_filled_addresses
 
-#     # filled_addresses = []
-#     # for combination in all_combinations:
-#     #     new_tags = s_addr.hash_tags[:]
-#     #     for idx, tag in zip(missing_indices, combination):
-#     #         new_tags[idx] = tag
-#     #     filled_addresses.append(
-#     #         CentralPageHashAddress(scope=s_addr.scope, hash_tags=new_tags)
-#     #     )
-
-#     # return filled_addresses
-#     return []
+    # return filled_addresses

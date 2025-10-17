@@ -109,7 +109,7 @@ def make_central_page_hash_address(
         raise ValueError(
             f"Unknown hash scope: {hash_scope} (legal ones: {_hash_scope_index.keys()})"
         )
-    hash_values: List[Optional[str]] = [""] * 4
+    hash_values: List[Optional[str]] = [None] * 4
     hash_values[index] = hash_value
     return CentralPageHashAddress(scope=scope, hash_tags=hash_values)
 

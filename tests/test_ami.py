@@ -194,8 +194,8 @@ def test_find_missing_tag_returns_addresses():
     mock_client = MagicMock()
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = [
-        {"NAME": "newtag1", "SCOPE": "PMGL2"},
-        {"NAME": "newtag2", "SCOPE": "PMGL2"},
+        {"HASHTAGS.NAME": "newtag1", "HASHTAGS.SCOPE": "PMGL2"},
+        {"HASHTAGS.NAME": "newtag2", "HASHTAGS.SCOPE": "PMGL2"},
     ]
     mock_client.execute.return_value = mock_dom_object
 

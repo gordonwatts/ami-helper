@@ -30,11 +30,18 @@ def list_hash_tuples(
     ),
 ):
 
-    from .ami import find_hashtag_tuples
+    from .ami import find_hashtag
 
-    hashtag_list = find_hashtag_tuples(scope, hashtags[0])
+    hashtag_list = find_hashtag(scope, hashtags[0])
     for possiblehash in hashtag_list:
         print(possiblehash)
+
+    print("going to try the next thing")
+    if len(hashtag_list) > 0:
+        from .ami import find_hashtag_tuples
+
+        missing_tags = find_hashtag_tuples(hashtag_list[0])
+        print(missing_tags)
 
 
 if __name__ == "__main__":
