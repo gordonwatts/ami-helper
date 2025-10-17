@@ -46,8 +46,8 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
             for x in g_rucio.list_dids(
                 scope, [{"name": rucio_search_string}], did_type="container"
             )
+            if isinstance(x, str) and len(list(g_rucio.list_content(scope, x))) > 0
         ]
-        print(dids)
         if len(dids) > 0:
             result[tag_type] = dids
 

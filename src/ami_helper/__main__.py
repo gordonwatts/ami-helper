@@ -136,14 +136,18 @@ def with_hashtags(
 
     evnt_ldns = find_dids_with_hashtags(addr)
     if requested_content == "EVNT":
-        ldns = evnt_ldns
+        for ldn in evnt_ldns:
+            print(ldn)
     else:
         for ldn in evnt_ldns:
-            find_datasets(ldn, scope, requested_content)
+            print(ldn + ":")
+            for found_type, found_ldns in find_datasets(
+                ldn, scope, requested_content
+            ).items():
+                print(f"  {found_type}:")
+                for found_ldn in found_ldns:
+                    print(f"    {found_ldn}")
         ldns = []
-
-    for ldn in ldns:
-        print(ldn)
 
 
 if __name__ == "__main__":
