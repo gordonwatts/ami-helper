@@ -382,9 +382,7 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
     rows = result.get_rows()
     if len(rows) == 0:
         # Dataset not found at the given scope/name
-        raise RuntimeError(
-            f"Dataset '{name}' not found in scope '{scope}'"
-        )
+        raise RuntimeError(f"Dataset '{name}' not found in scope '{scope}'")
     assert (
         len(rows) == 1
     ), f"Expected exactly one dataset for name '{name}', found {len(rows)}"
@@ -400,3 +398,35 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
     metadata = {name_map.get(k, k): v for k, v in rows[0].items()}
 
     return metadata  # type: ignore
+
+
+def get_provenance(scope: str, ds_name: str) -> List[str]:
+    """
+    Get the provenance dataset logical names for a given dataset.
+
+    :param scope: What scope should be looking for?
+    :type scope: str
+    :param ds_name: The exact name of the dataset
+    :type ds_name: str
+    :return: List of provenance dataset logical names
+    :rtype: List[str]
+    """
+
+    cmd = f"GetDatasetProvenance -logicalDatasetName={ds_name}"
+    result = execute_ami_command(cmd)
+
+    def find_backone(name: str) -> Optional[str]:
+        for r in result.get_rows("edge"):
+            if r["destination"] == name:
+                return r["source"]
+
+    result_names = []
+    backone = ds_name
+    while True:
+        backone = find_backone(backone)
+        if backone is None:
+            break
+        result_names.append(backone)
+        ds_name = backone
+
+    return result_names

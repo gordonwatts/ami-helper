@@ -33,7 +33,6 @@
 
 ### Unit Tests
 
-- Mock `pyAMI.client.Client` for all AMI interactions
 - Test data model validation
 - Verify CLI argument parsing
 

@@ -12,6 +12,7 @@ from src.ami_helper.ami import (
     find_dids_with_name,
     find_hashtag,
     find_missing_tag,
+    get_provenance,
     set_cache,
 )
 from src.ami_helper.datamodel import CentralPageHashAddress
@@ -620,3 +621,39 @@ def test_get_metadata_asserts_on_multiple_rows():
         get_metadata("mc16_13TeV", "mc16_13TeV.123456.something.EVNT")
 
     assert "Expected exactly one dataset" in str(exc.value)
+
+
+def test_get_provenance_returns_chain_and_builds_command():
+    """Test that get_provenance builds the correct command and returns the provenance chain."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+
+    # Dataset name we'll query provenance for
+    ds_name = "mc23_13p6TeV.801167.Py8EG.sample.dataset"
+
+    # Rows returned by AMI for the 'edge' view: destination -> source
+    # This represents: ds_name <- parent1 <- grandparent
+    rows = [
+        {"source": "parent1", "destination": ds_name},
+        {"source": "grandparent", "destination": "parent1"},
+        {"source": "unrelated", "destination": "other"},
+    ]
+
+    # Make get_rows accept the "edge" argument used by get_provenance
+    def get_rows(arg=None):
+        if arg == "edge":
+            return rows
+        return []
+
+    mock_dom_object.get_rows.side_effect = get_rows
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute:
+        result = get_provenance("mc23_13p6TeV", ds_name)
+
+        # Verify AMI command
+        expected_cmd = f"GetDatasetProvenance -logicalDatasetName={ds_name}"
+        mock_execute.assert_called_once_with(expected_cmd)
+
+        # Expect the chain in order of discovery: parent then grandparent
+        assert result == ["parent1", "grandparent"]
