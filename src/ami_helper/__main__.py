@@ -337,10 +337,13 @@ def with_datatype(
     from rich.table import Table
 
     from .ami import get_by_datatype
+    from .ruicio import has_files
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
-    for ds in ds_list:
+    good_ds = [ds for ds in ds_list if has_files(scope, ds)]
+
+    for ds in good_ds:
         print(ds)
 
 
