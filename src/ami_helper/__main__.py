@@ -153,5 +153,29 @@ def with_hashtags(
         ldns = []
 
 
+@files_app.command("with-name")
+def with_name(
+    scope: ScopeEnum = typer.Argument(
+        ...,
+        help="Scope for the search. Valid values will be shown in help. (mandatory)",
+    ),
+    name: str = typer.Argument(..., help="Name to search for (mandatory)"),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
+):
+    """
+    Find datasets tagged with the four hashtags.
+    """
+    from .ami import find_dids_with_name
+
+
 if __name__ == "__main__":
     app()
