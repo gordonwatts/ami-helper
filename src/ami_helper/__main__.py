@@ -224,7 +224,7 @@ def with_name(
 
 
 @files_app.command("metadata")
-def with_name(
+def metadata(
     scope: ScopeEnum = typer.Argument(
         ...,
         help="Scope for the search. Valid values will be shown in help. (mandatory)",
