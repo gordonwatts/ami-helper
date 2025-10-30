@@ -447,7 +447,6 @@ def get_by_datatype(scope, run_number: int, datatype):
 
     evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
     query_text = str(q).replace('"', "`")
-    print(query_text)
     cmd = (
         f'SearchQuery -catalog="{evgen_short}_001:production" '
         '-entity="DATASET" '
