@@ -268,12 +268,13 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
     dataset = Table("DATASET")
     # hashtags_result = Table("HASHTAGS")
 
-    # Start building the WHERE clause
+    # Build the search for the proper datatypes
     q = (
         MSSQLQuery.from_(dataset)
         .select(dataset.LOGICALDATASETNAME)
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
+        .limit(100)
     )
 
     # Convert to string and format for AMI
