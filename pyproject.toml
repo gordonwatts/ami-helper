@@ -31,7 +31,7 @@ dependencies = [
   "rich>=13.0.0",
   "rucio",
   "pyami-core",
-  "pyami-atlas",
+  # "pyami-atlas",
 ]
 
 [project.urls]
