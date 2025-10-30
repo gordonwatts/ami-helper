@@ -307,6 +307,7 @@ def find_dids_with_name(
             h3.NAME.as_("PMGL3"),
             h4.NAME.as_("PMGL4"),
         )
+        .distinct()
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
         .limit(100)  # keep your limit if desired
