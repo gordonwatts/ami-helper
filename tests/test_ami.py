@@ -569,8 +569,8 @@ def test_get_metadata_builds_expected_command():
         )
 
 
-def test_get_metadata_asserts_on_non_unique_result():
-    """get_metadata should assert if AMI returns zero or multiple rows."""
+def test_get_metadata_raises_on_not_found():
+    """get_metadata should raise RuntimeError when zero rows are returned (not found)."""
     mock_dom_object = MagicMock(spec=DOMObject)
     mock_dom_object.get_rows.return_value = []  # zero rows
 
@@ -579,8 +579,44 @@ def test_get_metadata_asserts_on_non_unique_result():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
     ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags), pytest.raises(
+        RuntimeError
+    ) as exc:
+        ds = "mc23_13p6TeV.999999.nonedataset.EVNT"
+        get_metadata("mc23_13p6TeV", ds)
+
+    msg = str(exc.value)
+    assert "not found" in msg
+    assert "mc23_13p6TeV" in msg
+    assert "mc23_13p6TeV.999999.nonedataset.EVNT" in msg
+
+
+def test_get_metadata_asserts_on_multiple_rows():
+    """get_metadata should assert if AMI returns multiple rows (ambiguous)."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "PHYSICSCOMMENT": "A",
+            "PHYSICSSHORT": "B",
+            "GENERATORNAME": "C",
+            "GENFILTEFF": "0.1",
+            "CROSSSECTION": "0.2",
+        },
+        {
+            "PHYSICSCOMMENT": "A2",
+            "PHYSICSSHORT": "B2",
+            "GENERATORNAME": "C2",
+            "GENFILTEFF": "0.3",
+            "CROSSSECTION": "0.4",
+        },
+    ]
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags), pytest.raises(
         AssertionError
     ) as exc:
-        get_metadata("mc23_13p6TeV", "mc23_13p6TeV.999999.nonedataset.EVNT")
+        get_metadata("mc16_13TeV", "mc16_13TeV.123456.something.EVNT")
 
     assert "Expected exactly one dataset" in str(exc.value)

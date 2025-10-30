@@ -380,6 +380,11 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
 
     result = execute_ami_command(cmd)
     rows = result.get_rows()
+    if len(rows) == 0:
+        # Dataset not found at the given scope/name
+        raise RuntimeError(
+            f"Dataset '{name}' not found in scope '{scope}'"
+        )
     assert (
         len(rows) == 1
     ), f"Expected exactly one dataset for name '{name}', found {len(rows)}"
