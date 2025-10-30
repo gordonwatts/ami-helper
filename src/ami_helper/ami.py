@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import diskcache
 import pyAMI.client
@@ -252,7 +252,9 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
     return ldns
 
 
-def find_dids_with_name(scope: str, name: str) -> List[str]:
+def find_dids_with_name(
+    scope: str, name: str
+) -> List[Tuple[str, CentralPageHashAddress]]:
     """
     Search AMI for a dataset with the given name, EVNT type.
 
@@ -260,8 +262,8 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
     :type scope: str
     :param name: The name the dataset should contain
     :type name: str
-    :return: List of EVNT dataset names
-    :rtype: List[str]
+    :return: List of tuples of (dataset logical name, CentralPageHashAddress)
+    :rtype: List[Tuple[str, CentralPageHashAddress]]
     """
 
     # Build the query for an AMI dataset
@@ -331,8 +333,20 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
     result = execute_ami_command(cmd)
     rows = result.get_rows()
 
-    def get_tags(row):
-        tags = ", ".join([row[f"h{i}.NAME PMGL{i}"] for i in range(1, 5)])
-        return tags
+    def _get_alias_value(row, i: int) -> str:
+        return row[f"h{i}.NAME PMGL{i}"]
 
-    return [f'{row["LOGICALDATASETNAME"]}, {get_tags(row)}' for row in rows]  # type: ignore
+    results: List[Tuple[str, CentralPageHashAddress]] = []
+    for row in rows:
+        ldn: str = row["LOGICALDATASETNAME"]  # type: ignore
+        # Build tags list with explicit Optional type to satisfy typing
+        tags: List[Optional[str]] = [
+            _get_alias_value(row, 1),
+            _get_alias_value(row, 2),
+            _get_alias_value(row, 3),
+            _get_alias_value(row, 4),
+        ]
+        addr = CentralPageHashAddress(scope=scope, hash_tags=tags)
+        results.append((ldn, addr))
+
+    return results
