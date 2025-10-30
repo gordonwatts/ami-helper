@@ -306,8 +306,8 @@ def Provenance(
         print(ds)
 
 
-@files_app.command("by-datatype")
-def Provenance(
+@files_app.command("with-datatype")
+def with_datatype(
     scope: ScopeEnum = typer.Argument(
         ...,
         help="Scope for the search. Valid values will be shown in help. (mandatory)",
