@@ -160,6 +160,11 @@ def with_name(
         help="Scope for the search. Valid values will be shown in help. (mandatory)",
     ),
     name: str = typer.Argument(..., help="Name to search for (mandatory)"),
+    non_cp: bool = typer.Option(
+        False,
+        "--non-cp",
+        help="Also search non-Central Page PMG datasets (e.g. exotics signals, etc.)",
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -176,7 +181,7 @@ def with_name(
     """
     from .ami import find_dids_with_name
 
-    ds = find_dids_with_name(scope, name)
+    ds = find_dids_with_name(scope, name, require_pmg=not non_cp)
     for d in ds:
         print(d)
 

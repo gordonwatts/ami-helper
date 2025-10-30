@@ -253,7 +253,7 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
 
 
 def find_dids_with_name(
-    scope: str, name: str
+    scope: str, name: str, require_pmg: bool = True
 ) -> List[Tuple[str, CentralPageHashAddress]]:
     """
     Search AMI for a dataset with the given name, EVNT type.
@@ -262,6 +262,8 @@ def find_dids_with_name(
     :type scope: str
     :param name: The name the dataset should contain
     :type name: str
+    :param require_pmg: Demand 4 PMG hash tags (usually only PMG datasets have hashtags)
+    :type require_pmg: bool
     :return: List of tuples of (dataset logical name, CentralPageHashAddress)
     :rtype: List[Tuple[str, CentralPageHashAddress]]
     """
@@ -273,35 +275,32 @@ def find_dids_with_name(
     h3 = Table("HASHTAGS").as_("h3")
     h4 = Table("HASHTAGS").as_("h4")
 
-    # Build the search for the proper datatypes
-    # q = (
-    #     MSSQLQuery.from_(dataset)
-    #     .select(dataset.LOGICALDATASETNAME)
-    #     .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
-    #     .where(dataset.DATATYPE == "EVNT")
-    #     # TODO: Fix this limit (see #10).
-    #     .limit(100)
-    # )
-
-    # # Next, make sure these have PMG tags
-    # subquery = (
-    #     MSSQLQuery.from_(hashtags_result)
-    #     .select(hashtags_result.DATASETFK)
-    #     .where(hashtags_result.SCOPE == "PMGL1")
-    # )
-    # q = q.where(dataset.IDENTIFIER.isin(subquery))
+    q = MSSQLQuery.from_(dataset)
+    if require_pmg:
+        q = (
+            q.join(h1)
+            .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
+            .join(h2)
+            .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
+            .join(h3)
+            .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
+            .join(h4)
+            .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
+        )
+    else:
+        q = (
+            q.left_join(h1)
+            .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
+            .left_join(h2)
+            .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
+            .left_join(h3)
+            .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
+            .left_join(h4)
+            .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
+        )
 
     q = (
-        MSSQLQuery.from_(dataset)
-        .left_join(h1)
-        .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
-        .left_join(h2)
-        .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
-        .left_join(h3)
-        .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
-        .left_join(h4)
-        .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
-        .select(
+        q.select(
             dataset.LOGICALDATASETNAME,
             h1.NAME.as_("PMGL1"),
             h2.NAME.as_("PMGL2"),
