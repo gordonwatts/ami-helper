@@ -6,7 +6,7 @@ import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from pypika import Field, Query, Table
+from pypika import Field, Table, OracleQuery
 from pypika.functions import Lower
 
 from ami_helper.datamodel import (
@@ -100,7 +100,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
     # Query
     hashtags = Table("tbl")
     q = (
-        Query.from_(hashtags)
+        OracleQuery.from_(hashtags)
         .select(hashtags.NAME, hashtags.SCOPE)
         .distinct()
         .where(Lower(hashtags.NAME).like(f"%{search_string.lower()}%"))
@@ -158,7 +158,7 @@ def find_missing_tag(
 
     # Start building the WHERE clause
     q = (
-        Query.from_(dataset)
+        OracleQuery.from_(dataset)
         .select(hashtags_result.SCOPE, hashtags_result.NAME)
         .distinct()
         .join(hashtags_result)
@@ -171,7 +171,7 @@ def find_missing_tag(
         if hashtag is not None:
             hashtags_alias = Table("HASHTAGS").as_(f"h{n+1}")
             subquery = (
-                Query.from_(hashtags_alias)
+                OracleQuery.from_(hashtags_alias)
                 .select(hashtags_alias.DATASETFK)
                 .where(hashtags_alias.SCOPE == f"PMGL{n+1}")
                 .where(hashtags_alias.NAME == hashtag)
@@ -252,18 +252,45 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
     return ldns
 
 
-def find_dids_with_name(CentralPageHashAddress) -> List[str]:
-    "Find dataset IDs matching all hashtags in the provided CentralPageHashAddress."
+def find_dids_with_name(scope: str, name: str) -> List[str]:
+    """
+    Search AMI for a dataset with the given name, EVNT type.
 
-    # hash_scope_list = ",".join(f"PMGL{i+1}" for i in range(len(s_addr.hash_tags)))
-    # name_list = ",".join(s_addr.hash_tags)  # type: ignore
+    :param scope: What scope shoudl be looking for?
+    :type scope: str
+    :param name: The name the dataset should contain
+    :type name: str
+    :return: List of EVNT dataset names
+    :rtype: List[str]
+    """
 
-    # cmd = f'DatasetWBListDatasetsForHashtag -scope="{hash_scope_list}" -name="{name_list}" -operator="AND"'
+    # Build the query for an AMI dataset
+    dataset = Table("DATASET")
+    hashtags_result = Table("HASHTAGS")
 
-    # result = execute_ami_command(cmd)
-    # ldns = [
-    #     str(res["ldn"]) for res in result.get_rows() if s_addr.scope in str(res["ldn"])
-    # ]
+    # Start building the WHERE clause
+    q = (
+        OracleQuery.from_(dataset).select(dataset.IDENTIFIER)
+        # .where(dataset.IDENTIFIER.like(f"%{name}%"))
+        .limit(5)
+    )
 
-    # return ldns
-    raise NotImplementedError("find_dids_with_name is not yet implemented.")
+    # Convert to string and format for AMI
+    query_text = str(q).replace('"', "`")
+    print(query_text)
+    query_text = "SELECT IDENTIFIER FROM DATASET FETCH FIRST 5 ROWS ONLY"
+
+    # Get the scope sorted out
+    scope_short = scope.split("_")[0]
+    evgen_short = SCOPE_TAGS[scope_short].evgen.short
+
+    cmd = (
+        f'SearchQuery -catalog="{evgen_short}_001:production" '
+        '-entity="DATASET" '
+        f'-sql="{query_text}"'
+    )
+
+    result = execute_ami_command(cmd)
+    rows = result.get_rows()
+    print(rows)
+    return [row["IDENTIFIER"] for row in rows]  # type: ignore
