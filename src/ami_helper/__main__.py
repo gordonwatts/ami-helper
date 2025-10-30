@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 import logging
 from enum import Enum
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -343,8 +344,8 @@ def with_datatype(
     from rich.table import Table
 
     from .ami import get_by_datatype
-    from .ruicio import has_files
     from .datamodel import get_campaign
+    from .ruicio import has_files
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
