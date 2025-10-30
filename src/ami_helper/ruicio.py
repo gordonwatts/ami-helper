@@ -13,6 +13,10 @@ g_step_info = {"AOD": "recon"}
 def init_atlas_access():
     """
     Get everything setup for ATLAS access.
+
+    NOTE: This is a bit of a heuristic - we did `lsetup rucio` and compared
+    the env variables before and after to see what was set. We then
+    determined the following were important by trial and error.
     """
     import os
 
@@ -33,23 +37,8 @@ def init_atlas_access():
         "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
     )
 
-    # os.environ["RUCIO_ACCOUNT"] = "gwatts"
-    # os.environ["RUCIO_PYTHONBIN"] = "python3"
-    # os.environ["RUCIO_PYTHONBINPATH"] = "/usr/bin/python3.9"
-    # os.environ["SSL_CERT_DIR"] = (
-    #     "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
-    # )
-    # os.environ["VOMS_USERCONF"] = (
-    #     "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/vomses"
-    # )
-    # os.environ["X509_VOMSES"] = (
-    #     "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/vomses"
-    # )
-    # os.environ["X509_VOMS_DIR"] = (
-    #     "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/vomsdir"
-    # )
 
-
+# If we are importing this, we'll be using rucio - so init atlas access
 init_atlas_access()
 
 
