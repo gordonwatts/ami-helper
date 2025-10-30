@@ -117,7 +117,7 @@ def with_hashtags(
     ] = 0,
 ):
     """
-    Find files with specific hashtags.
+    Find datasets tagged with the four hashtags.
     """
     from .ami import find_dids_with_hashtags
     from .datamodel import CentralPageHashAddress
@@ -127,6 +127,9 @@ def with_hashtags(
         "evnt": "EVNT",
         "phys": "DAOD_PHYS",
         "physlite": "DAOD_PHYSLITE",
+        "EVNT": "EVNT",
+        "PHYS": "DAOD_PHYS",
+        "PHYSLITE": "DAOD_PHYSLITE",
     }
     requested_content = content_mapping.get(content, content)
 
