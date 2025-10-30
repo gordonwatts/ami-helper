@@ -266,25 +266,54 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
 
     # Build the query for an AMI dataset
     dataset = Table("DATASET")
-    hashtags_result = Table("HASHTAGS")
+    h1 = Table("HASHTAGS").as_("h1")
+    h2 = Table("HASHTAGS").as_("h2")
+    h3 = Table("HASHTAGS").as_("h3")
+    h4 = Table("HASHTAGS").as_("h4")
 
     # Build the search for the proper datatypes
+    # q = (
+    #     MSSQLQuery.from_(dataset)
+    #     .select(dataset.LOGICALDATASETNAME)
+    #     .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
+    #     .where(dataset.DATATYPE == "EVNT")
+    #     # TODO: Fix this limit (see #10).
+    #     .limit(100)
+    # )
+
+    # # Next, make sure these have PMG tags
+    # subquery = (
+    #     MSSQLQuery.from_(hashtags_result)
+    #     .select(hashtags_result.DATASETFK)
+    #     .where(hashtags_result.SCOPE == "PMGL1")
+    # )
+    # q = q.where(dataset.IDENTIFIER.isin(subquery))
+
     q = (
         MSSQLQuery.from_(dataset)
-        .select(dataset.LOGICALDATASETNAME)
+        .join(h1)
+        .on(dataset.IDENTIFIER == h1.DATASETFK)
+        .join(h2)
+        .on(dataset.IDENTIFIER == h2.DATASETFK)
+        .join(h3)
+        .on(dataset.IDENTIFIER == h3.DATASETFK)
+        .join(h4)
+        .on(dataset.IDENTIFIER == h4.DATASETFK)
+        .select(
+            dataset.LOGICALDATASETNAME,
+            h1.NAME.as_("PMGL1"),
+            h2.NAME.as_("PMGL2"),
+            h3.NAME.as_("PMGL3"),
+            h4.NAME.as_("PMGL4"),
+        )
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
-        # TODO: Fix this limit (see #10).
-        .limit(100)
+        .where(h1.SCOPE == "PMGL1")
+        .where(h2.SCOPE == "PMGL2")
+        .where(h3.SCOPE == "PMGL3")
+        .where(h4.SCOPE == "PMGL4")
+        .limit(100)  # keep your limit if desired
     )
-
-    # Next, make sure these have PMG tags
-    subquery = (
-        MSSQLQuery.from_(hashtags_result)
-        .select(hashtags_result.DATASETFK)
-        .where(hashtags_result.SCOPE == "PMGL1")
-    )
-    q = q.where(dataset.IDENTIFIER.isin(subquery))
 
     # Convert to string and format for AMI
     query_text = str(q).replace('"', "`")
@@ -301,4 +330,9 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
 
     result = execute_ami_command(cmd)
     rows = result.get_rows()
-    return [row["LOGICALDATASETNAME"] for row in rows]  # type: ignore
+
+    def get_tags(row):
+        tags = ", ".join([row[f"h{i}.NAME PMGL{i}"] for i in range(1, 5)])
+        return tags
+
+    return [f'{row["LOGICALDATASETNAME"]}, {get_tags(row)}' for row in rows]  # type: ignore
