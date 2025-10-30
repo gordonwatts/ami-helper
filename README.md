@@ -20,11 +20,9 @@ pip install ami-helper
 
 1. Use an `atlas_al9` image.
 1. Make sure that there is a valid x509 cert in the standard place. This will need it to access AMI and rucio.
+  - You can usually do this using `lsetup rucio` and then `voms-proxy-init -voms atlas` in any window.
 
-
-1. `setupATLAS`
-1. `lsetup rucio`
-1. `voms-proxy-init -voms atlas`
+At this point `ami-helper` commands should work. Long-term this is a bit unstable - the environment variables that are set here could change with future implementations (e.g. tokens, etc.)
 
 ## License
 
