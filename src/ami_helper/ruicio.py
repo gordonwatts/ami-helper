@@ -54,6 +54,18 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
     return result
 
 
+def has_files(scope: str, ds_name: str):
+    """
+    Return True if the dataset has any files.
+
+    :param scope: Description
+    :type scope: str
+    :param ds_name: Description
+    :type ds_name: str
+    """
+    return len(list(g_rucio.list_content(scope, ds_name))) > 0
+
+
 # def getOutputFormat(rucio, dsformat, ldns, scopeshort, tagcombs):
 #     aods = {}
 

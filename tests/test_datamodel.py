@@ -1,6 +1,10 @@
 import pytest
 
-from ami_helper.datamodel import CentralPageHashAddress, make_central_page_hash_address
+from ami_helper.datamodel import (
+    CentralPageHashAddress,
+    make_central_page_hash_address,
+    get_campaign,
+)
 
 
 class TestMakeCentralPageHashAddress:
@@ -43,3 +47,22 @@ class TestMakeCentralPageHashAddress:
         """Test that the function returns the correct type."""
         result = make_central_page_hash_address("mc16", "PMGL1", "test")
         assert isinstance(result, CentralPageHashAddress)
+
+
+class TestGetCampaign:
+    """Tests for get_campaign function."""
+
+    def test_mc23a_fullsim_match(self):
+        """Dataset containing a known FS tag combination should map to mc23a."""
+        dataset = "mc23_13p6TeV.801167.DAOD_LLP1.e12345_s4162_r15540_p5678"
+        assert get_campaign("mc23", dataset) == "mc23a - FS"
+
+    def test_mc23d_af3_match(self):
+        """Dataset containing a known AF3 tag combination should map to mc23d."""
+        dataset = "mc23_13p6TeV.801168.AOD.e12345_a910_r15224_p5678"
+        assert get_campaign("mc23", dataset) == "mc23d - AF3"
+
+    def test_no_match_raises(self):
+        """A dataset without recognizable tag combo should raise ValueError."""
+        with pytest.raises(ValueError):
+            get_campaign("mc23", "mc23_13p6TeV.some.dataset.without.tags")

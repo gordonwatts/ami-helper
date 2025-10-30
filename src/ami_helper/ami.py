@@ -430,3 +430,29 @@ def get_provenance(scope: str, ds_name: str) -> List[str]:
         ds_name = backone
 
     return result_names
+
+
+def get_by_datatype(scope, run_number: int, datatype):
+    dataset = Table("DATASET")
+    q = MSSQLQuery.from_(dataset)
+    q = (
+        q.select(
+            dataset.LOGICALDATASETNAME,
+        )
+        .where(dataset.AMISTATUS == "VALID")
+        .where(dataset.DATASETNUMBER == str(run_number))
+        .where(dataset.DATATYPE == datatype)
+        .distinct()
+    )
+
+    evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
+    query_text = str(q).replace('"', "`")
+    cmd = (
+        f'SearchQuery -catalog="{evgen_short}_001:production" '
+        '-entity="DATASET" '
+        f'-sql="{query_text}"'
+    )
+
+    result = execute_ami_command(cmd)
+
+    return [r["LOGICALDATASETNAME"] for r in result.get_rows()]

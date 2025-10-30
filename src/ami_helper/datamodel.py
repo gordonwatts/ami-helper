@@ -158,3 +158,41 @@ def get_tag_combinations(scope_short: str) -> Dict[str, List[str]]:
                     tagcombs[f"{camp} - {asimtype}"].append(f"_{atag}_{rtag}")
 
     return tagcombs
+
+
+def get_campaign(scope_short: str, dataset: str) -> str:
+    """
+    Infer the campaign and sim type (e.g. "mc23a - FS", "mc23d - AF3") for a
+    dataset within a given short scope by matching known tag combinations
+    embedded in the dataset name.
+
+    The function builds the tag combinations via ``get_tag_combinations`` and
+    searches for any of those substrings (e.g. "_s4162_r15540") in the dataset
+    name. If exactly one campaign+simtype key (e.g., "mc23a - FS") matches, that
+    key is returned.
+
+    :param scope_short: Short scope key (e.g. "mc23", "mc20")
+    :param dataset: Full AMI dataset name to inspect
+    :raises ValueError: If no match can be found or if multiple campaigns match
+    :return: The inferred campaign and sim type key (e.g., "mc23a - FS")
+    """
+    combos = get_tag_combinations(scope_short)
+
+    matched_keys = set()
+    for key, tag_list in combos.items():
+        # key looks like "mc23a - FS" or "mc23d - AF3"
+        for tag in tag_list:
+            if tag in dataset:
+                matched_keys.add(key)
+                break  # Don't double-count this key for multiple tags
+
+    if len(matched_keys) == 1:
+        return next(iter(matched_keys))
+    if len(matched_keys) == 0:
+        raise ValueError(
+            f"Could not infer campaign from dataset for scope '{scope_short}': {dataset}"
+        )
+    # Ambiguous
+    raise ValueError(
+        f"Ambiguous campaign candidates {sorted(matched_keys)} for dataset: {dataset}"
+    )
