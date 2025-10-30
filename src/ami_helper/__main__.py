@@ -277,5 +277,37 @@ def metadata(
         console.print(table)
 
 
+@files_app.command("provenance")
+def Provenance(
+    scope: ScopeEnum = typer.Argument(
+        ...,
+        help="Scope for the search. Valid values will be shown in help. (mandatory)",
+    ),
+    name: str = typer.Argument(..., help="Full dataset name (exact match)"),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
+):
+    """
+    Given an extact match dataset, find the history of the dataset.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    from .ami import get_provenance
+
+    ds_list = get_provenance(scope, name)
+
+    for ds in ds_list:
+        print(ds)
+
+
 if __name__ == "__main__":
     app()
