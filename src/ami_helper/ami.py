@@ -266,7 +266,7 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
 
     # Build the query for an AMI dataset
     dataset = Table("DATASET")
-    # hashtags_result = Table("HASHTAGS")
+    hashtags_result = Table("HASHTAGS")
 
     # Build the search for the proper datatypes
     q = (
@@ -277,6 +277,14 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
         # TODO: Fix this limit (see #10).
         .limit(100)
     )
+
+    # Next, make sure these have PMG tags
+    subquery = (
+        MSSQLQuery.from_(hashtags_result)
+        .select(hashtags_result.DATASETFK)
+        .where(hashtags_result.SCOPE == "PMGL1")
+    )
+    q = q.where(dataset.IDENTIFIER.isin(subquery))
 
     # Convert to string and format for AMI
     query_text = str(q).replace('"', "`")
