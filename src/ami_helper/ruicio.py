@@ -1,11 +1,46 @@
 import logging
+from pathlib import Path
 from typing import Dict, List
+
 from rucio.client import Client
 
 from .datamodel import SCOPE_TAGS, get_tag_combinations
 
 # Track non-deriv data formats
 g_step_info = {"AOD": "recon"}
+
+
+def init_atlas_access():
+    """
+    Get everything setup for ATLAS access.
+
+    NOTE: This is a bit of a heuristic - we did `lsetup rucio` and compared
+    the env variables before and after to see what was set. We then
+    determined the following were important by trial and error.
+    """
+    import os
+
+    # Find the rucio config file
+    rucio_homes = []
+    for path in Path(
+        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/aarch64-Linux/rucio-clients"
+    ).rglob("rucio.cfg"):
+        rucio_homes.append(path.parent.parent)
+    rucio_home = sorted(rucio_homes, key=lambda p: str(p))[-1]
+    os.environ["RUCIO_HOME"] = str(rucio_home)
+
+    uid = os.getuid()
+    os.environ["X509_USER_PROXY"] = f"/tmp/x509up_u{uid}"
+
+    os.environ["RUCIO_AUTH_TYPE"] = "x509_proxy"
+    os.environ["X509_CERT_DIR"] = (
+        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
+    )
+
+
+# If we are importing this, we'll be using rucio - so init atlas access
+init_atlas_access()
+
 
 # The rucio client (for effiency, create once)
 g_rucio = Client()

@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: MIT
 import logging
 from enum import Enum
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from .datamodel import SCOPE_TAGS
-from .ruicio import find_datasets
 
 
 # Define valid scopes - can be easily modified in the future
@@ -121,6 +121,7 @@ def with_hashtags(
     """
     from .ami import find_dids_with_hashtags
     from .datamodel import CentralPageHashAddress
+    from .ruicio import find_datasets
 
     # Map short names to full DAOD names, but allow any custom value
     content_mapping = {
@@ -343,8 +344,8 @@ def with_datatype(
     from rich.table import Table
 
     from .ami import get_by_datatype
-    from .ruicio import has_files
     from .datamodel import get_campaign
+    from .ruicio import has_files
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
