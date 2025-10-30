@@ -274,6 +274,7 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
         .select(dataset.LOGICALDATASETNAME)
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
+        # TODO: Fix this limit (see #10).
         .limit(100)
     )
 
