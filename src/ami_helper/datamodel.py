@@ -125,3 +125,36 @@ def add_hash_to_addr(
     hash_values = addr.hash_tags.copy()  # Create a copy to avoid mutation
     hash_values[index] = hash_value
     return CentralPageHashAddress(scope=addr.scope, hash_tags=hash_values)
+
+
+def get_tag_combinations(scope_short: str) -> Dict[str, List[str]]:
+    """
+    Find all tag combinations for reco for full sim and fast sim.
+
+    :param scope_short: The short scope of what we are looking at
+    :type scope_short: str
+    :return: List of tag combinations
+    :rtype: Dict[str, List[str]]
+    """
+    tagcombs = {}
+
+    # get combinations for full sim
+    for stag in SCOPE_TAGS[scope_short].sim.FS:
+        for camp in SCOPE_TAGS[scope_short].reco.campaigns:
+            for rtag in SCOPE_TAGS[scope_short].reco.campaigns[camp]:
+                if f"{camp} - FS" not in tagcombs:
+                    tagcombs[f"{camp} - FS"] = [f"_{stag}_{rtag}"]
+                else:
+                    tagcombs[f"{camp} - FS"].append(f"_{stag}_{rtag}")
+
+    # get combinations for fast sim
+    asimtype = [x for x in SCOPE_TAGS[scope_short].sim.AF.keys() if "AF" in x][0]
+    for atag in SCOPE_TAGS[scope_short].sim.AF[asimtype]:
+        for camp, rtags in SCOPE_TAGS[scope_short].reco.campaigns.items():
+            for rtag in rtags:
+                if f"{camp} - {asimtype}" not in tagcombs:
+                    tagcombs[f"{camp} - {asimtype}"] = [f"_{atag}_{rtag}"]
+                else:
+                    tagcombs[f"{camp} - {asimtype}"].append(f"_{atag}_{rtag}")
+
+    return tagcombs

@@ -1,0 +1,102 @@
+import logging
+from typing import Dict, List
+from rucio.client import Client
+
+from .datamodel import SCOPE_TAGS, get_tag_combinations
+
+# Track non-deriv data formats
+g_step_info = {"AOD": "recon"}
+
+# The rucio client (for effiency, create once)
+g_rucio = Client()
+
+
+def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
+    # What step and content do we want to go after?
+    step = g_step_info.get(content, "deriv")
+    if step == "deriv" and not content.startswith("DAOD_"):
+        raise ValueError(
+            f"Content '{content}' not recognised as a derivation name!"
+            " Must start with DAOD_."
+        )
+    stepformat = f".{step}.{content}."
+
+    # Change the ldn into a search string for rucio
+    scope_short = scope.split("_")[0]
+    evgen_short = SCOPE_TAGS[scope_short].evgen.short
+    reco_short = SCOPE_TAGS[scope_short].reco.short
+
+    # Look at all tags
+    tag_combinations = get_tag_combinations(scope_short)
+    result = {}
+    for tag_type, tag_comb in tag_combinations.items():
+        for tag in tag_comb:
+            rucio_search_string = (
+                ldn.replace(f"{evgen_short}_", f"{reco_short}_").replace(
+                    ".evgen.EVNT.", stepformat
+                )
+                + tag
+                + "%"
+            )
+
+        logging.debug(f"Rucio search string: {rucio_search_string}")
+        # Grab all the did's from rucio that have files
+        dids = [
+            x
+            for x in g_rucio.list_dids(
+                scope, [{"name": rucio_search_string}], did_type="container"
+            )
+            if isinstance(x, str) and len(list(g_rucio.list_content(scope, x))) > 0
+        ]
+        if len(dids) > 0:
+            result[tag_type] = dids
+
+    return result
+
+
+# def getOutputFormat(rucio, dsformat, ldns, scopeshort, tagcombs):
+#     aods = {}
+
+#     step = None
+#     if dsformat == "AOD":
+#         step = "recon"
+#     elif "DAOD" in dsformat:
+#         step = "deriv"
+#     else:
+#         print("ERROR: Non-recognised format entered! Should be AOD or DAOD_*.")
+#         return
+
+#     stepformat = f".{step}.{dsformat}."
+
+#     evgenshort = scopetag_dict[scopeshort]["evgen"]["short"]
+#     simshort = scopetag_dict[scopeshort]["sim"]["short"]
+#     recshort = scopetag_dict[scopeshort]["reco"]["short"]
+
+#     for ldn in ldns:
+#         if ldn not in aods:
+#             aods[ldn] = OrderedDict()
+
+#         for tagcomb in tagcombs:
+#             scope = ldn.replace(f"{evgenshort}_", f"{recshort}_").split(".")[0]
+#             # if opts.verbose: print "DEBUG: Search term for %s is %s"%(ldn,search)
+#             # dsfound=[x for x in rucio.list_dids(scope,{'name':search},type='container')]
+#             # print(search)
+#             dsfound = []
+#             for tag in tagcombs[tagcomb]:
+#                 search = (
+#                     ldn.replace(f"{evgenshort}_", f"{recshort}_").replace(
+#                         ".evgen.EVNT.", stepformat
+#                     )
+#                     + "%s" % tag
+#                     + "%"
+#                 )
+#                 # dsfound.extend([x for x in rucio.list_dids(scope,{'name':search},did_type='container')])
+#                 nonemptyds = []
+#                 for x in rucio.list_dids(scope, {"name": search}, did_type="container"):
+#                     if len(list(rucio.list_content(scope, x))):
+#                         nonemptyds.append(x)
+
+#                 dsfound.extend(nonemptyds)
+
+#             aods[ldn][tagcomb] = dsfound
+#     return aods

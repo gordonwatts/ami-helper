@@ -232,5 +232,21 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
         logger.info(
             f"Found {len(possible_tags)} hashtags for tags {', '.join([h for h in current_addr.hash_tags if h is not None])}"
         )
-
+        stack.extend(possible_tags)
     return results
+
+
+def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
+    "Find dataset IDs matching all hashtags in the provided CentralPageHashAddress."
+
+    hash_scope_list = ",".join(f"PMGL{i+1}" for i in range(len(s_addr.hash_tags)))
+    name_list = ",".join(s_addr.hash_tags)  # type: ignore
+
+    cmd = f'DatasetWBListDatasetsForHashtag -scope="{hash_scope_list}" -name="{name_list}" -operator="AND"'
+
+    result = execute_ami_command(cmd)
+    ldns = [
+        str(res["ldn"]) for res in result.get_rows() if s_addr.scope in str(res["ldn"])
+    ]
+
+    return ldns

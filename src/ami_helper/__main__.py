@@ -8,6 +8,7 @@ from typing import Annotated, Optional
 import typer
 
 from .datamodel import SCOPE_TAGS
+from .ruicio import find_datasets
 
 
 # Define valid scopes - can be easily modified in the future
@@ -21,6 +22,11 @@ class ScopeEnum(str, Enum):
 VALID_SCOPES = [scope.value for scope in ScopeEnum]
 
 app = typer.Typer()
+files_app = typer.Typer()
+hash_app = typer.Typer()
+
+app.add_typer(files_app, name="datasets", help="Commands for working with datasets")
+app.add_typer(hash_app, name="hashtags", help="Commands for working with AMI hashes")
 
 
 def verbose_callback(verbose: int) -> None:
@@ -54,8 +60,8 @@ def verbose_callback(verbose: int) -> None:
     root_logger.addHandler(handler)
 
 
-@app.command("list-hash-tuples")
-def list_hash_tuples(
+@hash_app.command("find")
+def find_hash_tuples(
     scope: ScopeEnum = typer.Argument(
         ..., help="Scope for the search. Valid values will be shown in help."
     ),
@@ -71,18 +77,80 @@ def list_hash_tuples(
         ),
     ] = 0,
 ):
+    """
+    List all AMI hashtag 4-tuples containing a string.
+    """
 
-    from .ami import find_hashtag
+    from .ami import find_hashtag, find_hashtag_tuples
 
     hashtag_list = find_hashtag(scope, hashtags)
 
     if len(hashtag_list) > 0:
-        from .ami import find_hashtag_tuples
-
         for ht in hashtag_list:
             all_tags = find_hashtag_tuples(ht)
             for t in all_tags:
-                print(", ".join([str(h) for h in t.hash_tags]))
+                print(" ".join([str(h) for h in t.hash_tags]))
+
+
+@files_app.command("with-hashtags")
+def with_hashtags(
+    scope: ScopeEnum = typer.Argument(
+        ..., help="Scope for the search. Valid values will be shown in help."
+    ),
+    hashtag_level1: str = typer.Argument(..., help="First hashtag (mandatory)"),
+    hashtag_level2: str = typer.Argument(..., help="Second hashtag (mandatory)"),
+    hashtag_level3: str = typer.Argument(..., help="Third hashtag (mandatory)"),
+    hashtag_level4: str = typer.Argument(..., help="Fourth hashtag (mandatory)"),
+    content: str = typer.Option(
+        "evnt",
+        help="Data content of file (evnt, phys, physlite, or custom value like DAOD_LLP1)",
+    ),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
+):
+    """
+    Find datasets tagged with the four hashtags.
+    """
+    from .ami import find_dids_with_hashtags
+    from .datamodel import CentralPageHashAddress
+
+    # Map short names to full DAOD names, but allow any custom value
+    content_mapping = {
+        "evnt": "EVNT",
+        "phys": "DAOD_PHYS",
+        "physlite": "DAOD_PHYSLITE",
+        "EVNT": "EVNT",
+        "PHYS": "DAOD_PHYS",
+        "PHYSLITE": "DAOD_PHYSLITE",
+    }
+    requested_content = content_mapping.get(content, content)
+
+    addr = CentralPageHashAddress(
+        scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]
+    )
+
+    evnt_ldns = find_dids_with_hashtags(addr)
+    if requested_content == "EVNT":
+        for ldn in evnt_ldns:
+            print(ldn)
+    else:
+        for ldn in evnt_ldns:
+            print(ldn + ":")
+            for found_type, found_ldns in find_datasets(
+                ldn, scope, requested_content
+            ).items():
+                print(f"  {found_type}:")
+                for found_ldn in found_ldns:
+                    print(f"    {found_ldn}")
+        ldns = []
 
 
 if __name__ == "__main__":
