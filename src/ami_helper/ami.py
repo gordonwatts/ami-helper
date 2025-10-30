@@ -293,14 +293,14 @@ def find_dids_with_name(
 
     q = (
         MSSQLQuery.from_(dataset)
-        .join(h1)
-        .on(dataset.IDENTIFIER == h1.DATASETFK)
-        .join(h2)
-        .on(dataset.IDENTIFIER == h2.DATASETFK)
-        .join(h3)
-        .on(dataset.IDENTIFIER == h3.DATASETFK)
-        .join(h4)
-        .on(dataset.IDENTIFIER == h4.DATASETFK)
+        .left_join(h1)
+        .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
+        .left_join(h2)
+        .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
+        .left_join(h3)
+        .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
+        .left_join(h4)
+        .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
         .select(
             dataset.LOGICALDATASETNAME,
             h1.NAME.as_("PMGL1"),
@@ -310,10 +310,6 @@ def find_dids_with_name(
         )
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
-        .where(h1.SCOPE == "PMGL1")
-        .where(h2.SCOPE == "PMGL2")
-        .where(h3.SCOPE == "PMGL3")
-        .where(h4.SCOPE == "PMGL4")
         .limit(100)  # keep your limit if desired
     )
 
