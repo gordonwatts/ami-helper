@@ -8,6 +8,7 @@ import pytest
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
 from src.ami_helper.ami import (
     find_dids_with_hashtags,
+    find_dids_with_name,
     find_hashtag,
     find_missing_tag,
     set_cache,
@@ -266,3 +267,218 @@ def test_find_dids_with_hashtags_returns_filtered_ldns():
         assert "mc23_13p6TeV.123456.dataset1" in result
         assert "mc23_13p6TeV.789012.dataset3" in result
         assert "mc21_13TeV.654321.dataset2" not in result
+
+
+def test_find_dids_with_name_require_pmg_true():
+    """Test find_dids_with_name with require_pmg=True uses inner joins."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        find_dids_with_name("mc16_13TeV", "ttbar", require_pmg=True)
+
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Check catalog and entity
+        assert 'SearchQuery -catalog="mc15_001:production"' in actual_cmd
+        assert '-entity="DATASET"' in actual_cmd
+
+        # Extract SQL
+        sql_match = re.search(r'-sql="([^"]+)"', actual_cmd)
+        assert sql_match, "Could not find SQL in command"
+        sql = sql_match.group(1)
+
+        # Should use JOIN (not LEFT JOIN) when require_pmg=True
+        assert "JOIN" in sql
+        assert "LEFT JOIN" not in sql or "LEFT" not in sql.replace("LEFT JOIN", "")
+
+        # Should have all 4 PMGL hashtag tables
+        assert "`h1`" in sql
+        assert "`h2`" in sql
+        assert "`h3`" in sql
+        assert "`h4`" in sql
+
+        # Should filter by name
+        assert "ttbar" in sql
+
+        # Should filter by EVNT datatype
+        assert "EVNT" in sql
+
+        # Should have a LIMIT clause (MSSQL uses FETCH NEXT syntax)
+        assert "FETCH NEXT 100 ROWS ONLY" in sql or "LIMIT 100" in sql
+
+
+def test_find_dids_with_name_require_pmg_false():
+    """Test find_dids_with_name with require_pmg=False uses left joins."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []
+
+    mock_scope_tags = {"mc23": MagicMock(evgen=MagicMock(short="mc23"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        find_dids_with_name("mc23_13p6TeV", "singletop", require_pmg=False)
+
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Check catalog
+        assert 'SearchQuery -catalog="mc23_001:production"' in actual_cmd
+
+        # Extract SQL
+        sql_match = re.search(r'-sql="([^"]+)"', actual_cmd)
+        assert sql_match, "Could not find SQL in command"
+        sql = sql_match.group(1)
+
+        # Should use LEFT JOIN when require_pmg=False
+        assert "LEFT JOIN" in sql
+
+        # Should still have all 4 PMGL hashtag tables
+        assert "`h1`" in sql
+        assert "`h2`" in sql
+        assert "`h3`" in sql
+        assert "`h4`" in sql
+
+        # Should filter by name
+        assert "singletop" in sql
+
+        # Should filter by EVNT datatype
+        assert "EVNT" in sql
+
+
+def test_find_dids_with_name_returns_results():
+    """Test that find_dids_with_name returns correct tuples of (ldn, address)."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "LOGICALDATASETNAME": "mc16_13TeV.123456.dataset1.EVNT",
+            "h1.NAME PMGL1": "Top",
+            "h2.NAME PMGL2": "TTbar",
+            "h3.NAME PMGL3": "Baseline",
+            "h4.NAME PMGL4": "PowhegPythia",
+        },
+        {
+            "LOGICALDATASETNAME": "mc16_13TeV.654321.dataset2.EVNT",
+            "h1.NAME PMGL1": "Top",
+            "h2.NAME PMGL2": "SingleTop",
+            "h3.NAME PMGL3": "Wt",
+            "h4.NAME PMGL4": "PowhegPythia",
+        },
+    ]
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        result = find_dids_with_name("mc16_13TeV", "ttbar", require_pmg=True)
+
+        # Should return 2 tuples
+        assert len(result) == 2
+
+        # Check first result
+        ldn1, addr1 = result[0]
+        assert ldn1 == "mc16_13TeV.123456.dataset1.EVNT"
+        assert addr1.scope == "mc16_13TeV"
+        assert addr1.hash_tags == ["Top", "TTbar", "Baseline", "PowhegPythia"]
+
+        # Check second result
+        ldn2, addr2 = result[1]
+        assert ldn2 == "mc16_13TeV.654321.dataset2.EVNT"
+        assert addr2.scope == "mc16_13TeV"
+        assert addr2.hash_tags == ["Top", "SingleTop", "Wt", "PowhegPythia"]
+
+
+def test_find_dids_with_name_with_none_hashtags():
+    """Test that find_dids_with_name handles None/empty hashtags when require_pmg=False."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "LOGICALDATASETNAME": "mc23_13p6TeV.789012.dataset3.EVNT",
+            "h1.NAME PMGL1": "Physics",
+            "h2.NAME PMGL2": "",
+            "h3.NAME PMGL3": None,
+            "h4.NAME PMGL4": "Generator",
+        },
+    ]
+
+    mock_scope_tags = {"mc23": MagicMock(evgen=MagicMock(short="mc23"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        result = find_dids_with_name("mc23_13p6TeV", "test", require_pmg=False)
+
+        # Should return 1 tuple
+        assert len(result) == 1
+
+        ldn, addr = result[0]
+        assert ldn == "mc23_13p6TeV.789012.dataset3.EVNT"
+        assert addr.scope == "mc23_13p6TeV"
+        # Empty strings and None values should be in the hash_tags list
+        assert len(addr.hash_tags) == 4
+        assert addr.hash_tags[0] == "Physics"
+        assert addr.hash_tags[3] == "Generator"
+
+
+def test_find_dids_with_name_sql_structure():
+    """Test the exact SQL structure generated by find_dids_with_name."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []
+
+    mock_scope_tags = {"mc21": MagicMock(evgen=MagicMock(short="mc16"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        find_dids_with_name("mc21_13TeV", "zprime", require_pmg=True)
+
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Extract SQL
+        sql_match = re.search(r'-sql="([^"]+)"', actual_cmd)
+        assert sql_match, "Could not find SQL in command"
+        sql = sql_match.group(1)
+
+        # Should have SELECT with all hashtag names
+        assert "SELECT" in sql
+        assert "`LOGICALDATASETNAME`" in sql
+        assert "PMGL1" in sql
+        assert "PMGL2" in sql
+        assert "PMGL3" in sql
+        assert "PMGL4" in sql
+
+        # Should have WHERE clauses
+        assert "WHERE" in sql
+        assert "`LOGICALDATASETNAME` LIKE '%zprime%'" in sql
+        assert "`DATATYPE`='EVNT'" in sql or "`DATATYPE`=`EVNT`" in sql
+
+        # Should have LIMIT 100 (MSSQL uses FETCH NEXT syntax)
+        assert "FETCH NEXT 100 ROWS ONLY" in sql or "LIMIT 100" in sql
+
+
+def test_find_dids_with_name_scope_parsing():
+    """Test that find_dids_with_name correctly parses the scope."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []
+
+    mock_scope_tags = {"mc20": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        # Pass a scope with underscore - should split and use first part
+        find_dids_with_name("mc20_13TeV", "test", require_pmg=True)
+
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Should use mc15 (from mock_scope_tags["mc20"])
+        assert 'SearchQuery -catalog="mc15_001:production"' in actual_cmd

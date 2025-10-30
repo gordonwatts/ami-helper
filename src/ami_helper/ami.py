@@ -1,12 +1,12 @@
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from pypika import Field, Query, Table
+from pypika import Field, Table, MSSQLQuery
 from pypika.functions import Lower
 
 from ami_helper.datamodel import (
@@ -100,7 +100,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
     # Query
     hashtags = Table("tbl")
     q = (
-        Query.from_(hashtags)
+        MSSQLQuery.from_(hashtags)
         .select(hashtags.NAME, hashtags.SCOPE)
         .distinct()
         .where(Lower(hashtags.NAME).like(f"%{search_string.lower()}%"))
@@ -158,7 +158,7 @@ def find_missing_tag(
 
     # Start building the WHERE clause
     q = (
-        Query.from_(dataset)
+        MSSQLQuery.from_(dataset)
         .select(hashtags_result.SCOPE, hashtags_result.NAME)
         .distinct()
         .join(hashtags_result)
@@ -171,7 +171,7 @@ def find_missing_tag(
         if hashtag is not None:
             hashtags_alias = Table("HASHTAGS").as_(f"h{n+1}")
             subquery = (
-                Query.from_(hashtags_alias)
+                MSSQLQuery.from_(hashtags_alias)
                 .select(hashtags_alias.DATASETFK)
                 .where(hashtags_alias.SCOPE == f"PMGL{n+1}")
                 .where(hashtags_alias.NAME == hashtag)
@@ -250,3 +250,98 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
     ]
 
     return ldns
+
+
+def find_dids_with_name(
+    scope: str, name: str, require_pmg: bool = True
+) -> List[Tuple[str, CentralPageHashAddress]]:
+    """
+    Search AMI for a dataset with the given name, EVNT type.
+
+    :param scope: What scope shoudl be looking for?
+    :type scope: str
+    :param name: The name the dataset should contain
+    :type name: str
+    :param require_pmg: Demand 4 PMG hash tags (usually only PMG datasets have hashtags)
+    :type require_pmg: bool
+    :return: List of tuples of (dataset logical name, CentralPageHashAddress)
+    :rtype: List[Tuple[str, CentralPageHashAddress]]
+    """
+
+    # Build the query for an AMI dataset
+    dataset = Table("DATASET")
+    h1 = Table("HASHTAGS").as_("h1")
+    h2 = Table("HASHTAGS").as_("h2")
+    h3 = Table("HASHTAGS").as_("h3")
+    h4 = Table("HASHTAGS").as_("h4")
+
+    q = MSSQLQuery.from_(dataset)
+    if require_pmg:
+        q = (
+            q.join(h1)
+            .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
+            .join(h2)
+            .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
+            .join(h3)
+            .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
+            .join(h4)
+            .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
+        )
+    else:
+        q = (
+            q.left_join(h1)
+            .on((dataset.IDENTIFIER == h1.DATASETFK) & (h1.SCOPE == "PMGL1"))
+            .left_join(h2)
+            .on((dataset.IDENTIFIER == h2.DATASETFK) & (h2.SCOPE == "PMGL2"))
+            .left_join(h3)
+            .on((dataset.IDENTIFIER == h3.DATASETFK) & (h3.SCOPE == "PMGL3"))
+            .left_join(h4)
+            .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
+        )
+
+    q = (
+        q.select(
+            dataset.LOGICALDATASETNAME,
+            h1.NAME.as_("PMGL1"),
+            h2.NAME.as_("PMGL2"),
+            h3.NAME.as_("PMGL3"),
+            h4.NAME.as_("PMGL4"),
+        )
+        .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
+        .where(dataset.DATATYPE == "EVNT")
+        .limit(100)  # keep your limit if desired
+    )
+
+    # Convert to string and format for AMI
+    query_text = str(q).replace('"', "`")
+
+    # Get the scope sorted out
+    scope_short = scope.split("_")[0]
+    evgen_short = SCOPE_TAGS[scope_short].evgen.short
+
+    cmd = (
+        f'SearchQuery -catalog="{evgen_short}_001:production" '
+        '-entity="DATASET" '
+        f'-sql="{query_text}"'
+    )
+
+    result = execute_ami_command(cmd)
+    rows = result.get_rows()
+
+    def _get_alias_value(row, i: int) -> str:
+        return row[f"h{i}.NAME PMGL{i}"]
+
+    results: List[Tuple[str, CentralPageHashAddress]] = []
+    for row in rows:
+        ldn: str = row["LOGICALDATASETNAME"]  # type: ignore
+        # Build tags list with explicit Optional type to satisfy typing
+        tags: List[Optional[str]] = [
+            _get_alias_value(row, 1),
+            _get_alias_value(row, 2),
+            _get_alias_value(row, 3),
+            _get_alias_value(row, 4),
+        ]
+        addr = CentralPageHashAddress(scope=scope, hash_tags=tags)
+        results.append((ldn, addr))
+
+    return results
