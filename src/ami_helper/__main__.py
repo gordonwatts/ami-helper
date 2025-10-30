@@ -298,12 +298,47 @@ def Provenance(
     """
     Given an extact match dataset, find the history of the dataset.
     """
-    from rich.console import Console
-    from rich.table import Table
-
     from .ami import get_provenance
 
     ds_list = get_provenance(scope, name)
+
+    for ds in ds_list:
+        print(ds)
+
+
+@files_app.command("by-datatype")
+def Provenance(
+    scope: ScopeEnum = typer.Argument(
+        ...,
+        help="Scope for the search. Valid values will be shown in help. (mandatory)",
+    ),
+    run_number: int = typer.Argument(
+        ..., help="Run number of the dataset you want to look up"
+    ),
+    datatype: str = typer.Argument(
+        ..., help="Exact match of data type (DAOD_PHYSLITE, AOD, etc.)"
+    ),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
+):
+    """
+    Given an extact match dataset, find the history of the dataset.
+    """
+
+    from rich.console import Console
+    from rich.table import Table
+
+    from .ami import get_by_datatype
+
+    ds_list = get_by_datatype(scope, run_number, datatype)
 
     for ds in ds_list:
         print(ds)
