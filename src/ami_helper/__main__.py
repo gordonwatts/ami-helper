@@ -223,5 +223,59 @@ def with_name(
         console.print(table)
 
 
+@files_app.command("metadata")
+def metadata(
+    scope: ScopeEnum = typer.Argument(
+        ...,
+        help="Scope for the search. Valid values will be shown in help. (mandatory)",
+    ),
+    name: str = typer.Argument(..., help="Full dataset name (exact match)"),
+    markdown: bool = typer.Option(
+        False,
+        "--markdown",
+        "-m",
+        help="Output as markdown table instead of rich table",
+    ),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v for INFO, -vv for DEBUG)",
+            callback=verbose_callback,
+        ),
+    ] = 0,
+):
+    """
+    Given an extact match (EVNT), find the cross section, filter efficiency, etc.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    from .ami import get_metadata
+
+    ds = get_metadata(scope, name)
+
+    if markdown:
+        # Output as markdown table
+        print("| Key | Value |")
+        print("|-----|-------|")
+        for key, value in ds.items():
+            print(f"| {key} | {value} |")
+    else:
+        # Create a rich table
+        table = Table(title=f"Metadata for {name}")
+        table.add_column("Key", style="cyan", no_wrap=False)
+        table.add_column("Value", style="magenta", no_wrap=False)
+
+        for key, value in ds.items():
+            table.add_row(key, value)
+
+        # Print the table
+        console = Console()
+        console.print(table)
+
+
 if __name__ == "__main__":
     app()

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import diskcache
 import pyAMI.client
@@ -307,6 +307,7 @@ def find_dids_with_name(
             h3.NAME.as_("PMGL3"),
             h4.NAME.as_("PMGL4"),
         )
+        .distinct()
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
         .limit(100)  # keep your limit if desired
@@ -345,3 +346,57 @@ def find_dids_with_name(
         results.append((ldn, addr))
 
     return results
+
+
+def get_metadata(scope: str, name: str) -> Dict[str, str]:
+    """
+    Get metadata for a dataset with the given name.
+
+    :param scope: What scope should be looking for?
+    :type scope: str
+    :param name: The exact name of the dataset
+    :type name: str
+    :return: Dictionary of metadata key-value pairs
+    :rtype: Dict[str, str]
+    """
+
+    dataset = Table("DATASET")
+    q = MSSQLQuery.from_(dataset)
+    q = q.select(
+        dataset.PHYSICSCOMMENT,
+        dataset.PHYSICSSHORT,
+        dataset.GENERATORNAME,
+        dataset.GENFILTEFF,
+        dataset.CROSSSECTION,
+    ).where(dataset.LOGICALDATASETNAME == name)
+
+    evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
+    query_text = str(q).replace('"', "`")
+    cmd = (
+        f'SearchQuery -catalog="{evgen_short}_001:production" '
+        '-entity="DATASET" '
+        f'-sql="{query_text}"'
+    )
+
+    result = execute_ami_command(cmd)
+    rows = result.get_rows()
+    if len(rows) == 0:
+        # Dataset not found at the given scope/name
+        raise RuntimeError(
+            f"Dataset '{name}' not found in scope '{scope}'"
+        )
+    assert (
+        len(rows) == 1
+    ), f"Expected exactly one dataset for name '{name}', found {len(rows)}"
+
+    name_map = {
+        "PHYSICSCOMMENT": "Physics Comment",
+        "PHYSICSSHORT": "Physics Short Name",
+        "GENERATORNAME": "Generator Name",
+        "GENFILTEFF": "Filter Efficiency",
+        "CROSSSECTION": "Cross Section (nb)",
+    }
+
+    metadata = {name_map.get(k, k): v for k, v in rows[0].items()}
+
+    return metadata  # type: ignore

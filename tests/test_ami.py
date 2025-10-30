@@ -7,6 +7,7 @@ import pytest
 
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
 from src.ami_helper.ami import (
+    get_metadata,
     find_dids_with_hashtags,
     find_dids_with_name,
     find_hashtag,
@@ -482,3 +483,140 @@ def test_find_dids_with_name_scope_parsing():
 
         # Should use mc15 (from mock_scope_tags["mc20"])
         assert 'SearchQuery -catalog="mc15_001:production"' in actual_cmd
+
+
+def test_get_metadata_returns_friendly_mapping():
+    """Ensure get_metadata maps AMI column names to user-friendly keys and returns values."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "PHYSICSCOMMENT": "Some physics process",
+            "PHYSICSSHORT": "HSS",
+            "GENERATORNAME": "MadGraphPythia8EvtGen",
+            "GENFILTEFF": "0.123",
+            "CROSSSECTION": "1.234",
+        }
+    ]
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        dataset_name = (
+            "mc16_13TeV.304823.MadGraphPythia8EvtGen_A14NNPDF23LO_"
+            "HSS_LLP_mH1000_mS400_lt9m.evgen.EVNT.e5102"
+        )
+        md = get_metadata("mc16_13TeV", dataset_name)
+
+        # Keys should be user-friendly names
+        assert md == {
+            "Physics Comment": "Some physics process",
+            "Physics Short Name": "HSS",
+            "Generator Name": "MadGraphPythia8EvtGen",
+            "Filter Efficiency": "0.123",
+            "Cross Section (nb)": "1.234",
+        }
+
+
+def test_get_metadata_builds_expected_command():
+    """Verify the AMI command and SQL built by get_metadata are correct."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "PHYSICSCOMMENT": "X",
+            "PHYSICSSHORT": "Y",
+            "GENERATORNAME": "Z",
+            "GENFILTEFF": "0.1",
+            "CROSSSECTION": "0.2",
+        }
+    ]
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
+        dataset_name = "mc16_13TeV.123456.test.EVNT"
+        get_metadata("mc16_13TeV", dataset_name)
+
+        mock_execute.assert_called_once()
+        actual_cmd = mock_execute.call_args[0][0]
+
+        # Correct catalog and entity
+        assert 'SearchQuery -catalog="mc15_001:production"' in actual_cmd
+        assert '-entity="DATASET"' in actual_cmd
+
+        # Extract and validate SQL
+        sql_match = re.search(r'-sql="([^"]+)"', actual_cmd)
+        assert sql_match, "Could not find SQL in command"
+        sql = sql_match.group(1)
+
+        # SELECT fields
+        assert "SELECT" in sql
+        for col in [
+            "`PHYSICSCOMMENT`",
+            "`PHYSICSSHORT`",
+            "`GENERATORNAME`",
+            "`GENFILTEFF`",
+            "`CROSSSECTION`",
+        ]:
+            assert col in sql
+
+        # WHERE exact dataset name equality
+        assert f"`LOGICALDATASETNAME`='{dataset_name}'" in sql or (
+            "`LOGICALDATASETNAME`=" in sql and dataset_name in sql
+        )
+
+
+def test_get_metadata_raises_on_not_found():
+    """get_metadata should raise RuntimeError when zero rows are returned (not found)."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = []  # zero rows
+
+    mock_scope_tags = {"mc23": MagicMock(evgen=MagicMock(short="mc23"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags), pytest.raises(
+        RuntimeError
+    ) as exc:
+        ds = "mc23_13p6TeV.999999.nonedataset.EVNT"
+        get_metadata("mc23_13p6TeV", ds)
+
+    msg = str(exc.value)
+    assert "not found" in msg
+    assert "mc23_13p6TeV" in msg
+    assert "mc23_13p6TeV.999999.nonedataset.EVNT" in msg
+
+
+def test_get_metadata_asserts_on_multiple_rows():
+    """get_metadata should assert if AMI returns multiple rows (ambiguous)."""
+    mock_dom_object = MagicMock(spec=DOMObject)
+    mock_dom_object.get_rows.return_value = [
+        {
+            "PHYSICSCOMMENT": "A",
+            "PHYSICSSHORT": "B",
+            "GENERATORNAME": "C",
+            "GENFILTEFF": "0.1",
+            "CROSSSECTION": "0.2",
+        },
+        {
+            "PHYSICSCOMMENT": "A2",
+            "PHYSICSSHORT": "B2",
+            "GENERATORNAME": "C2",
+            "GENFILTEFF": "0.3",
+            "CROSSSECTION": "0.4",
+        },
+    ]
+
+    mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
+
+    with patch(
+        "src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object
+    ), patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags), pytest.raises(
+        AssertionError
+    ) as exc:
+        get_metadata("mc16_13TeV", "mc16_13TeV.123456.something.EVNT")
+
+    assert "Expected exactly one dataset" in str(exc.value)
