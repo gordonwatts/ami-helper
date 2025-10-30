@@ -6,7 +6,7 @@ import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from pypika import Field, Table, OracleQuery
+from pypika import Field, Table, MSSQLQuery
 from pypika.functions import Lower
 
 from ami_helper.datamodel import (
@@ -100,7 +100,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
     # Query
     hashtags = Table("tbl")
     q = (
-        OracleQuery.from_(hashtags)
+        MSSQLQuery.from_(hashtags)
         .select(hashtags.NAME, hashtags.SCOPE)
         .distinct()
         .where(Lower(hashtags.NAME).like(f"%{search_string.lower()}%"))
@@ -158,7 +158,7 @@ def find_missing_tag(
 
     # Start building the WHERE clause
     q = (
-        OracleQuery.from_(dataset)
+        MSSQLQuery.from_(dataset)
         .select(hashtags_result.SCOPE, hashtags_result.NAME)
         .distinct()
         .join(hashtags_result)
@@ -171,7 +171,7 @@ def find_missing_tag(
         if hashtag is not None:
             hashtags_alias = Table("HASHTAGS").as_(f"h{n+1}")
             subquery = (
-                OracleQuery.from_(hashtags_alias)
+                MSSQLQuery.from_(hashtags_alias)
                 .select(hashtags_alias.DATASETFK)
                 .where(hashtags_alias.SCOPE == f"PMGL{n+1}")
                 .where(hashtags_alias.NAME == hashtag)
@@ -266,19 +266,18 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
 
     # Build the query for an AMI dataset
     dataset = Table("DATASET")
-    hashtags_result = Table("HASHTAGS")
+    # hashtags_result = Table("HASHTAGS")
 
     # Start building the WHERE clause
     q = (
-        OracleQuery.from_(dataset).select(dataset.IDENTIFIER)
-        # .where(dataset.IDENTIFIER.like(f"%{name}%"))
-        .limit(5)
+        MSSQLQuery.from_(dataset)
+        .select(dataset.LOGICALDATASETNAME)
+        .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
+        .where(dataset.DATATYPE == "EVNT")
     )
 
     # Convert to string and format for AMI
     query_text = str(q).replace('"', "`")
-    print(query_text)
-    query_text = "SELECT IDENTIFIER FROM DATASET FETCH FIRST 5 ROWS ONLY"
 
     # Get the scope sorted out
     scope_short = scope.split("_")[0]
@@ -292,5 +291,4 @@ def find_dids_with_name(scope: str, name: str) -> List[str]:
 
     result = execute_ami_command(cmd)
     rows = result.get_rows()
-    print(rows)
-    return [row["IDENTIFIER"] for row in rows]  # type: ignore
+    return [row["LOGICALDATASETNAME"] for row in rows]  # type: ignore

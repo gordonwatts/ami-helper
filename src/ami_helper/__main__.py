@@ -176,6 +176,10 @@ def with_name(
     """
     from .ami import find_dids_with_name
 
+    ds = find_dids_with_name(scope, name)
+    for d in ds:
+        print(d)
+
 
 if __name__ == "__main__":
     app()
