@@ -318,6 +318,12 @@ def with_datatype(
     datatype: str = typer.Argument(
         ..., help="Exact match of data type (DAOD_PHYSLITE, AOD, etc.)"
     ),
+    markdown: bool = typer.Option(
+        False,
+        "--markdown",
+        "-m",
+        help="Output as markdown table instead of rich table",
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -338,13 +344,43 @@ def with_datatype(
 
     from .ami import get_by_datatype
     from .ruicio import has_files
+    from .datamodel import get_campaign
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
     good_ds = [ds for ds in ds_list if has_files(scope, ds)]
 
+    # Determine short scope (e.g., "mc23") from enum value (e.g., "mc23_13p6TeV")
+    short_scope = scope.split("_")[0]
+
+    # Prepare rows with campaign lookup (safe against errors)
+    rows = []
     for ds in good_ds:
-        print(ds)
+        campaign = ""
+        if short_scope:
+            try:
+                campaign = get_campaign(short_scope, ds)
+            except Exception:
+                campaign = ""
+        rows.append((ds, campaign))
+
+    if markdown:
+        # Output as markdown table
+        print("| Dataset Name | Campaign |")
+        print("|--------------|----------|")
+        for ds, campaign in rows:
+            print(f"| {ds} | {campaign} |")
+    else:
+        # Create a rich table
+        table = Table(title="Datasets with datatype")
+        table.add_column("Dataset Name", style="cyan", no_wrap=False)
+        table.add_column("Campaign", style="magenta", no_wrap=False)
+
+        for ds, campaign in rows:
+            table.add_row(ds, campaign)
+
+        console = Console()
+        console.print(table)
 
 
 if __name__ == "__main__":
