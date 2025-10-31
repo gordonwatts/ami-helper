@@ -9,6 +9,10 @@ from typing import Annotated
 import typer
 
 from .datamodel import SCOPE_TAGS
+from .utils import ensure_and_import
+
+# Make sure installation has completed
+ensure_and_import("pyAMI_atlas")
 
 
 # Define valid scopes - can be easily modified in the future
