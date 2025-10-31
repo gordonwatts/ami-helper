@@ -6,7 +6,7 @@ import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from pypika import Field, Table, MSSQLQuery
+from pypika import Field, MSSQLQuery, Table
 from pypika.functions import Lower
 
 from ami_helper.datamodel import (

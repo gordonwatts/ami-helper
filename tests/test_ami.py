@@ -7,11 +7,11 @@ import pytest
 
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
 from src.ami_helper.ami import (
-    get_metadata,
     find_dids_with_hashtags,
     find_dids_with_name,
     find_hashtag,
     find_missing_tag,
+    get_metadata,
     get_provenance,
     set_cache,
 )
