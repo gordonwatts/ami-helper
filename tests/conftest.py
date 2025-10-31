@@ -2,6 +2,8 @@ import pytest
 
 from src.ami_helper.utils import ensure_and_import
 
+ensure_and_import("pyAMI_atlas")
+
 
 @pytest.fixture(autouse=True)
 def ensure_pyami_installed():
