@@ -29,7 +29,9 @@ jobs:
         # project defines optional-dependencies.test in pyproject.toml
         # Have to do complex install b.c. pyami doesn't work.
         run:
-          pip install setuptools wheel build
+          pip install setuptools
+          pip install wheel
+          pip install build
           pip install .[test]
           pip install pyami-atlas
 
