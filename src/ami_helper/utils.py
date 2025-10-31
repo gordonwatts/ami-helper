@@ -18,7 +18,7 @@ def _try_install_pip(pkg) -> bool:
 def _try_install_uv(pkg) -> bool:
     try:
         subprocess.run(
-            ["uv", "pip", "install", pkg, "--no-build-isolation"],
+            ["uv", "pip", "install", pkg],
             check=True,
         )
         return True
