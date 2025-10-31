@@ -312,7 +312,7 @@ def test_find_dids_with_name_require_pmg_true():
         assert "EVNT" in sql
 
         # Should have a LIMIT clause (MSSQL uses FETCH NEXT syntax)
-        assert "FETCH NEXT 100 ROWS ONLY" in sql or "LIMIT 100" in sql
+        assert "FETCH NEXT 500 ROWS ONLY" in sql or "LIMIT 500" in sql
 
 
 def test_find_dids_with_name_require_pmg_false():
@@ -462,8 +462,8 @@ def test_find_dids_with_name_sql_structure():
         assert "`LOGICALDATASETNAME` LIKE '%zprime%'" in sql
         assert "`DATATYPE`='EVNT'" in sql or "`DATATYPE`=`EVNT`" in sql
 
-        # Should have LIMIT 100 (MSSQL uses FETCH NEXT syntax)
-        assert "FETCH NEXT 100 ROWS ONLY" in sql or "LIMIT 100" in sql
+        # Should have LIMIT 500 (MSSQL uses FETCH NEXT syntax)
+        assert "FETCH NEXT 500 ROWS ONLY" in sql or "LIMIT 500" in sql
 
 
 def test_find_dids_with_name_scope_parsing():
