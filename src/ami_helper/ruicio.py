@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from rucio.client import Client
+from rucio.common.exception import DataIdentifierNotFound
 
 from .datamodel import SCOPE_TAGS, get_tag_combinations
 
@@ -98,52 +99,7 @@ def has_files(scope: str, ds_name: str):
     :param ds_name: Description
     :type ds_name: str
     """
-    return len(list(g_rucio.list_content(scope, ds_name))) > 0
-
-
-# def getOutputFormat(rucio, dsformat, ldns, scopeshort, tagcombs):
-#     aods = {}
-
-#     step = None
-#     if dsformat == "AOD":
-#         step = "recon"
-#     elif "DAOD" in dsformat:
-#         step = "deriv"
-#     else:
-#         print("ERROR: Non-recognised format entered! Should be AOD or DAOD_*.")
-#         return
-
-#     stepformat = f".{step}.{dsformat}."
-
-#     evgenshort = scopetag_dict[scopeshort]["evgen"]["short"]
-#     simshort = scopetag_dict[scopeshort]["sim"]["short"]
-#     recshort = scopetag_dict[scopeshort]["reco"]["short"]
-
-#     for ldn in ldns:
-#         if ldn not in aods:
-#             aods[ldn] = OrderedDict()
-
-#         for tagcomb in tagcombs:
-#             scope = ldn.replace(f"{evgenshort}_", f"{recshort}_").split(".")[0]
-#             # if opts.verbose: print "DEBUG: Search term for %s is %s"%(ldn,search)
-#             # dsfound=[x for x in rucio.list_dids(scope,{'name':search},type='container')]
-#             # print(search)
-#             dsfound = []
-#             for tag in tagcombs[tagcomb]:
-#                 search = (
-#                     ldn.replace(f"{evgenshort}_", f"{recshort}_").replace(
-#                         ".evgen.EVNT.", stepformat
-#                     )
-#                     + "%s" % tag
-#                     + "%"
-#                 )
-#                 # dsfound.extend([x for x in rucio.list_dids(scope,{'name':search},did_type='container')])
-#                 nonemptyds = []
-#                 for x in rucio.list_dids(scope, {"name": search}, did_type="container"):
-#                     if len(list(rucio.list_content(scope, x))):
-#                         nonemptyds.append(x)
-
-#                 dsfound.extend(nonemptyds)
-
-#             aods[ldn][tagcomb] = dsfound
-#     return aods
+    try:
+        return len(list(g_rucio.list_content(scope, ds_name))) > 0
+    except DataIdentifierNotFound:
+        return False
