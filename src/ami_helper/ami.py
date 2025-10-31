@@ -164,6 +164,7 @@ def find_missing_tag(
         .join(hashtags_result)
         .on(dataset.IDENTIFIER == hashtags_result.DATASETFK)
         .where(hashtags_result.SCOPE == f"PMGL{missing_index + 1}")
+        .where(dataset.AMISTATUS == "VALID")
     )
 
     # Add subquery conditions for each hashtag in hashcomb
@@ -311,6 +312,7 @@ def find_dids_with_name(
         .distinct()
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
+        .where(dataset.AMISTATUS == "VALID")
         .limit(results_limit)  # keep your limit if desired
     )
 
@@ -369,13 +371,17 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
 
     dataset = Table("DATASET")
     q = MSSQLQuery.from_(dataset)
-    q = q.select(
-        dataset.PHYSICSCOMMENT,
-        dataset.PHYSICSSHORT,
-        dataset.GENERATORNAME,
-        dataset.GENFILTEFF,
-        dataset.CROSSSECTION,
-    ).where(dataset.LOGICALDATASETNAME == name)
+    q = (
+        q.select(
+            dataset.PHYSICSCOMMENT,
+            dataset.PHYSICSSHORT,
+            dataset.GENERATORNAME,
+            dataset.GENFILTEFF,
+            dataset.CROSSSECTION,
+        )
+        .where(dataset.LOGICALDATASETNAME == name)
+        .where(dataset.AMISTATUS == "VALID")
+    )
 
     evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
     query_text = str(q).replace('"', "`")
