@@ -34,3 +34,10 @@ def ensure_and_import(pkg, pkg_spec=None) -> None:
             if not _try_install_uv(pkg_spec or pkg):
                 raise ImportError(f"Could not install required package '{pkg}'")
         importlib.invalidate_caches()
+
+
+def ensure_setup():
+    ensure_and_import("setuptools")
+    ensure_and_import("wheel")
+    ensure_and_import("build")
+    ensure_and_import("pyAMI_atlas")

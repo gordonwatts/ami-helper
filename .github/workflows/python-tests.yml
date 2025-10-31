@@ -27,7 +27,11 @@ jobs:
 
       - name: Install package and test deps
         # project defines optional-dependencies.test in pyproject.toml
-        run: pip install .[test]
+        # Have to do complex install b.c. pyami doesn't work.
+        run: 
+          pip install .[test]
+          pip install setuptools wheel build
+          pip install pyami_atlas
 
       - name: Run tests
         run: pytest -q
