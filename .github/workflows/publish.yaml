@@ -1,11 +1,6 @@
 name: Publish to PyPI
 
 on:
-  push:
-    # Publish when a tag is pushed
-    # Expect tags like 1.2.3 (numeric versions). GitHub Actions uses glob patterns, so '*.*.*' will match.
-    tags:
-      - '*.*.*'
   release:
     types: [published]
 
