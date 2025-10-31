@@ -9,7 +9,7 @@ name = "ami-helper"
 dynamic = ["version"]
 description = 'Commansd to help with MCP and data access with AMI in ATLAS'
 readme = "README.md"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.8,<3.12"
 license = "MIT"
 keywords = []
 authors = [{ name = "Gordon Watts", email = "gwatts@uw.edu" }]
