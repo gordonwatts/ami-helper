@@ -1,3 +1,6 @@
+from src.ami_helper.utils import ensure_and_import
+
+ensure_and_import("pyAMI_atlas")
 import re
 import tempfile
 from unittest.mock import MagicMock, patch
@@ -7,11 +10,11 @@ import pytest
 
 from src.ami_helper.ami import DOMObject  # Import DOMObject for spec
 from src.ami_helper.ami import (
-    get_metadata,
     find_dids_with_hashtags,
     find_dids_with_name,
     find_hashtag,
     find_missing_tag,
+    get_metadata,
     get_provenance,
     set_cache,
 )
