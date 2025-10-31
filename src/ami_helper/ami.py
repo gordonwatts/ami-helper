@@ -299,6 +299,7 @@ def find_dids_with_name(
             .on((dataset.IDENTIFIER == h4.DATASETFK) & (h4.SCOPE == "PMGL4"))
         )
 
+    results_limit = 500
     q = (
         q.select(
             dataset.LOGICALDATASETNAME,
@@ -310,7 +311,7 @@ def find_dids_with_name(
         .distinct()
         .where(dataset.LOGICALDATASETNAME.like(f"%{name}%"))
         .where(dataset.DATATYPE == "EVNT")
-        .limit(100)  # keep your limit if desired
+        .limit(results_limit)  # keep your limit if desired
     )
 
     # Convert to string and format for AMI
@@ -328,6 +329,12 @@ def find_dids_with_name(
 
     result = execute_ami_command(cmd)
     rows = result.get_rows()
+    if len(rows) == results_limit:
+        logger.warning(
+            f"Query for datasets with name '{name}' returned {results_limit} results - "
+            "there may be more matching datasets not retrieved. "
+            "Consider refining your search."
+        )
 
     def _get_alias_value(row, i: int) -> str:
         return row[f"h{i}.NAME PMGL{i}"]
