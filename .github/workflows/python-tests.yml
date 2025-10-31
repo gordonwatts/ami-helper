@@ -33,7 +33,7 @@ jobs:
           pip install wheel
           pip install build
           pip install .[test]
-          pip install pyami-atlas
+          pip install pyami-atlas --no-build-isolation
 
       - name: Run tests
         run: pytest -q
