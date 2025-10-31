@@ -38,7 +38,7 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "Using tag version: $TAG"
           cat > src/ami_helper/__about__.py <<EOF
-# SPDX-FileCopyrightText: 2025-present Gordon Watts <gwatts@uw.edu>
+# SPDX-FileCopyrightText: 2025 Gordon Watts <gwatts@uw.edu>
 #
 # SPDX-License-Identifier: MIT
 __version__ = "${TAG}"
