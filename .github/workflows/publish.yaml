@@ -37,12 +37,12 @@ jobs:
           echo "Detected ref: $GITHUB_REF"
           TAG=${GITHUB_REF#refs/tags/}
           echo "Using tag version: $TAG"
-          cat > src/ami_helper/__about__.py <<EOF
-# SPDX-FileCopyrightText: 2025 Gordon Watts <gwatts@uw.edu>
-#
-# SPDX-License-Identifier: MIT
-__version__ = "${TAG}"
-EOF
+          cat > src/ami_helper/__about__.py << EOF
+          # SPDX-FileCopyrightText: 2025 Gordon Watts <gwatts@uw.edu>
+          #
+          # SPDX-License-Identifier: MIT
+          __version__ = "${TAG}"
+          EOF
 
       - name: Build distributions with hatch
         run: |
