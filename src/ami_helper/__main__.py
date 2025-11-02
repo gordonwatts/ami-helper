@@ -4,7 +4,7 @@
 import json
 import logging
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, Callable, Mapping, Sequence
 
 import typer
 
@@ -21,6 +21,12 @@ class ScopeEnum(str, Enum):
     MC20_13TEV = "mc20_13TeV"
     MC21_13P6TEV = "mc21_13p6TeV"
     MC23_13P6TEV = "mc23_13p6TeV"
+
+
+class OutputFormat(str, Enum):
+    RICH = "rich"
+    MARKDOWN = "markdown"
+    JSON = "json"
 
 
 VALID_SCOPES = [scope.value for scope in ScopeEnum]
@@ -62,6 +68,54 @@ def verbose_callback(verbose: int) -> None:
         )
 
     root_logger.addHandler(handler)
+
+
+def render_output(
+    rows: Sequence[Mapping[str, Any]],
+    output_format: OutputFormat,
+    *,
+    title: str | None = None,
+    json_transform: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
+) -> None:
+    """Render rows in the desired output format."""
+
+    if not rows:
+        if output_format is OutputFormat.JSON:
+            print("[]")
+        return
+
+    if output_format is OutputFormat.JSON:
+        serializable_rows = [
+            dict(json_transform(row)) if json_transform else dict(row) for row in rows
+        ]
+        print(json.dumps(serializable_rows, indent=2))
+        return
+
+    header_keys = list(rows[0].keys())
+
+    if output_format is OutputFormat.MARKDOWN:
+        header_line = "| " + " | ".join(header_keys) + " |"
+        separator_line = "|" + "|".join([" --- " for _ in header_keys]) + "|"
+        print(header_line)
+        print(separator_line)
+        for row in rows:
+            row_values = [str(row.get(key, "")) for key in header_keys]
+            print("| " + " | ".join(row_values) + " |")
+        return
+
+    from rich.console import Console
+    from rich.table import Table
+
+    table = Table(title=title)
+    for index, key in enumerate(header_keys):
+        style = "cyan" if index == 0 else "magenta"
+        table.add_column(key, style=style, no_wrap=False)
+
+    for row in rows:
+        table.add_row(*[str(row.get(key, "")) for key in header_keys])
+
+    console = Console()
+    console.print(table)
 
 
 @hash_app.command("find")
@@ -170,16 +224,12 @@ def with_name(
         "--non-cp",
         help="Also search non-Central Page PMG datasets (e.g. exotics signals, etc.)",
     ),
-    markdown: bool = typer.Option(
-        False,
-        "--markdown",
-        "-m",
-        help="Output as markdown table instead of rich table",
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Output as JSON instead of rich table",
+    output_format: OutputFormat = typer.Option(
+        OutputFormat.RICH,
+        "--output-format",
+        "-o",
+        case_sensitive=False,
+        help="Choose the output format (rich, markdown, json)",
     ),
     verbose: Annotated[
         int,
@@ -195,63 +245,40 @@ def with_name(
     """
     Find datasets tagged with the four hashtags.
     """
-    from rich.console import Console
-    from rich.table import Table
-
     from .ami import find_dids_with_name
 
     ds = find_dids_with_name(scope, name, require_pmg=not non_cp)
 
-    if markdown and json_output:
-        raise typer.BadParameter(
-            "Choose only one of --markdown or --json for output formatting."
+    def _dataset_json_transform(row: Mapping[str, Any]) -> Mapping[str, Any]:
+        return {
+            "dataset": row["Dataset Name"],
+            "tag_1": row["Tag 1"],
+            "tag_2": row["Tag 2"],
+            "tag_3": row["Tag 3"],
+            "tag_4": row["Tag 4"],
+        }
+
+    table_rows: list[dict[str, Any]] = []
+    for ds_name, cp_address in ds:
+        tags = [str(tag) if tag is not None else "" for tag in cp_address.hash_tags]
+        while len(tags) < 4:
+            tags.append("")
+        table_rows.append(
+            {
+                "Dataset Name": ds_name,
+                "Tag 1": tags[0],
+                "Tag 2": tags[1],
+                "Tag 3": tags[2],
+                "Tag 4": tags[3],
+            }
         )
 
-    if json_output:
-        datasets_json: list[dict[str, Any]] = []
-        for ds_name, cp_address in ds:
-            tags = [str(tag) if tag is not None else "" for tag in cp_address.hash_tags]
-            while len(tags) < 4:
-                tags.append("")
-            datasets_json.append(
-                {
-                    "dataset": ds_name,
-                    "tag_1": tags[0],
-                    "tag_2": tags[1],
-                    "tag_3": tags[2],
-                    "tag_4": tags[3],
-                }
-            )
-        print(json.dumps(datasets_json, indent=2))
-    elif markdown:
-        # Output as markdown table
-        print("| Dataset Name | Tag 1 | Tag 2 | Tag 3 | Tag 4 |")
-        print("|--------------|-------|-------|-------|-------|")
-        for ds_name, cp_address in ds:
-            tags = [str(tag) if tag is not None else "" for tag in cp_address.hash_tags]
-            while len(tags) < 4:
-                tags.append("")
-            print(f"| {ds_name} | {tags[0]} | {tags[1]} | {tags[2]} | {tags[3]} |")
-    else:
-        # Create a rich table
-        table = Table(title="Datasets Found")
-        table.add_column("Dataset Name", style="cyan", no_wrap=False)
-        table.add_column("Tag 1", style="magenta")
-        table.add_column("Tag 2", style="magenta")
-        table.add_column("Tag 3", style="magenta")
-        table.add_column("Tag 4", style="magenta")
-
-        for ds_name, cp_address in ds:
-            # Extract the individual tags, handling None values
-            tags = [str(tag) if tag is not None else "" for tag in cp_address.hash_tags]
-            # Pad with empty strings if we have less than 4 tags
-            while len(tags) < 4:
-                tags.append("")
-            table.add_row(ds_name, tags[0], tags[1], tags[2], tags[3])
-
-        # Print the table
-        console = Console()
-        console.print(table)
+    render_output(
+        table_rows,
+        output_format,
+        title="Datasets Found",
+        json_transform=_dataset_json_transform,
+    )
 
 
 @files_app.command("metadata")
@@ -261,16 +288,12 @@ def metadata(
         help="Scope for the search. Valid values will be shown in help. (mandatory)",
     ),
     name: str = typer.Argument(..., help="Full dataset name (exact match)"),
-    markdown: bool = typer.Option(
-        False,
-        "--markdown",
-        "-m",
-        help="Output as markdown table instead of rich table",
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Output as JSON instead of rich table",
+    output_format: OutputFormat = typer.Option(
+        OutputFormat.RICH,
+        "--output-format",
+        "-o",
+        case_sensitive=False,
+        help="Choose the output format (rich, markdown, json)",
     ),
     verbose: Annotated[
         int,
@@ -286,38 +309,12 @@ def metadata(
     """
     Given an extact match (EVNT), find the cross section, filter efficiency, etc.
     """
-    from rich.console import Console
-    from rich.table import Table
-
     from .ami import get_metadata
 
     ds = get_metadata(scope, name)
+    metadata_rows = [{"Key": key, "Value": value} for key, value in ds.items()]
 
-    if markdown and json_output:
-        raise typer.BadParameter(
-            "Choose only one of --markdown or --json for output formatting."
-        )
-
-    if json_output:
-        print(json.dumps(ds, indent=2))
-    elif markdown:
-        # Output as markdown table
-        print("| Key | Value |")
-        print("|-----|-------|")
-        for key, value in ds.items():
-            print(f"| {key} | {value} |")
-    else:
-        # Create a rich table
-        table = Table(title=f"Metadata for {name}")
-        table.add_column("Key", style="cyan", no_wrap=False)
-        table.add_column("Value", style="magenta", no_wrap=False)
-
-        for key, value in ds.items():
-            table.add_row(key, value)
-
-        # Print the table
-        console = Console()
-        console.print(table)
+    render_output(metadata_rows, output_format, title=f"Metadata for {name}")
 
 
 @files_app.command("provenance")
@@ -361,16 +358,12 @@ def with_datatype(
     datatype: str = typer.Argument(
         ..., help="Exact match of data type (DAOD_PHYSLITE, AOD, etc.)"
     ),
-    markdown: bool = typer.Option(
-        False,
-        "--markdown",
-        "-m",
-        help="Output as markdown table instead of rich table",
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Output as JSON instead of rich table",
+    output_format: OutputFormat = typer.Option(
+        OutputFormat.RICH,
+        "--output-format",
+        "-o",
+        case_sensitive=False,
+        help="Choose the output format (rich, markdown, json)",
     ),
     verbose: Annotated[
         int,
@@ -386,9 +379,6 @@ def with_datatype(
     """
     Given an extact match dataset, find the history of the dataset.
     """
-
-    from rich.console import Console
-    from rich.table import Table
 
     from .ami import get_by_datatype
     from .datamodel import get_campaign
@@ -412,34 +402,20 @@ def with_datatype(
                 campaign = ""
         rows.append((ds, campaign))
 
-    if markdown and json_output:
-        raise typer.BadParameter(
-            "Choose only one of --markdown or --json for output formatting."
-        )
+    def _datatype_json_transform(row: Mapping[str, Any]) -> Mapping[str, Any]:
+        return {"dataset": row["Dataset Name"], "campaign": row["Campaign"]}
 
-    if json_output:
-        rows_json = [
-            {"dataset": dataset_name, "campaign": campaign}
-            for dataset_name, campaign in rows
-        ]
-        print(json.dumps(rows_json, indent=2))
-    elif markdown:
-        # Output as markdown table
-        print("| Dataset Name | Campaign |")
-        print("|--------------|----------|")
-        for ds, campaign in rows:
-            print(f"| {ds} | {campaign} |")
-    else:
-        # Create a rich table
-        table = Table(title="Datasets with datatype")
-        table.add_column("Dataset Name", style="cyan", no_wrap=False)
-        table.add_column("Campaign", style="magenta", no_wrap=False)
+    table_rows = [
+        {"Dataset Name": dataset_name, "Campaign": campaign}
+        for dataset_name, campaign in rows
+    ]
 
-        for ds, campaign in rows:
-            table.add_row(ds, campaign)
-
-        console = Console()
-        console.print(table)
+    render_output(
+        table_rows,
+        output_format,
+        title="Datasets with datatype",
+        json_transform=_datatype_json_transform,
+    )
 
 
 if __name__ == "__main__":
