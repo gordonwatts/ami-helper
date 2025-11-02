@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2025-present Gordon Watts <gwatts@uw.edu>
 #
 # SPDX-License-Identifier: MIT
+import json
 import logging
 from enum import Enum
-from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -176,6 +176,11 @@ def with_name(
         "-m",
         help="Output as markdown table instead of rich table",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output as JSON instead of rich table",
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -186,7 +191,7 @@ def with_name(
             callback=verbose_callback,
         ),
     ] = 0,
-):
+) -> None:
     """
     Find datasets tagged with the four hashtags.
     """
@@ -197,7 +202,28 @@ def with_name(
 
     ds = find_dids_with_name(scope, name, require_pmg=not non_cp)
 
-    if markdown:
+    if markdown and json_output:
+        raise typer.BadParameter(
+            "Choose only one of --markdown or --json for output formatting."
+        )
+
+    if json_output:
+        datasets_json: list[dict[str, Any]] = []
+        for ds_name, cp_address in ds:
+            tags = [str(tag) if tag is not None else "" for tag in cp_address.hash_tags]
+            while len(tags) < 4:
+                tags.append("")
+            datasets_json.append(
+                {
+                    "dataset": ds_name,
+                    "tag_1": tags[0],
+                    "tag_2": tags[1],
+                    "tag_3": tags[2],
+                    "tag_4": tags[3],
+                }
+            )
+        print(json.dumps(datasets_json, indent=2))
+    elif markdown:
         # Output as markdown table
         print("| Dataset Name | Tag 1 | Tag 2 | Tag 3 | Tag 4 |")
         print("|--------------|-------|-------|-------|-------|")
@@ -241,6 +267,11 @@ def metadata(
         "-m",
         help="Output as markdown table instead of rich table",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output as JSON instead of rich table",
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -251,7 +282,7 @@ def metadata(
             callback=verbose_callback,
         ),
     ] = 0,
-):
+) -> None:
     """
     Given an extact match (EVNT), find the cross section, filter efficiency, etc.
     """
@@ -262,7 +293,14 @@ def metadata(
 
     ds = get_metadata(scope, name)
 
-    if markdown:
+    if markdown and json_output:
+        raise typer.BadParameter(
+            "Choose only one of --markdown or --json for output formatting."
+        )
+
+    if json_output:
+        print(json.dumps(ds, indent=2))
+    elif markdown:
         # Output as markdown table
         print("| Key | Value |")
         print("|-----|-------|")
@@ -329,6 +367,11 @@ def with_datatype(
         "-m",
         help="Output as markdown table instead of rich table",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output as JSON instead of rich table",
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -339,7 +382,7 @@ def with_datatype(
             callback=verbose_callback,
         ),
     ] = 0,
-):
+) -> None:
     """
     Given an extact match dataset, find the history of the dataset.
     """
@@ -359,7 +402,7 @@ def with_datatype(
     short_scope = scope.split("_")[0]
 
     # Prepare rows with campaign lookup (safe against errors)
-    rows = []
+    rows: list[tuple[str, str]] = []
     for ds in good_ds:
         campaign = ""
         if short_scope:
@@ -369,7 +412,18 @@ def with_datatype(
                 campaign = ""
         rows.append((ds, campaign))
 
-    if markdown:
+    if markdown and json_output:
+        raise typer.BadParameter(
+            "Choose only one of --markdown or --json for output formatting."
+        )
+
+    if json_output:
+        rows_json = [
+            {"dataset": dataset_name, "campaign": campaign}
+            for dataset_name, campaign in rows
+        ]
+        print(json.dumps(rows_json, indent=2))
+    elif markdown:
         # Output as markdown table
         print("| Dataset Name | Campaign |")
         print("|--------------|----------|")
