@@ -243,7 +243,7 @@ def with_name(
     ] = 0,
 ) -> None:
     """
-    Find datasets tagged with the four hashtags.
+    Find datasets containing the given name.
     """
     from .ami import find_dids_with_name
 
@@ -377,7 +377,7 @@ def with_datatype(
     ] = 0,
 ) -> None:
     """
-    Given an extact match dataset, find the history of the dataset.
+    Given a run number, see what datasets exist with the derivation type.
     """
 
     from .ami import get_by_datatype
