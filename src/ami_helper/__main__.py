@@ -200,7 +200,6 @@ def with_hashtags(
                 print(f"  {found_type}:")
                 for found_ldn in found_ldns:
                     print(f"    {found_ldn}")
-        ldns = []
 
 
 @files_app.command("with-name")
