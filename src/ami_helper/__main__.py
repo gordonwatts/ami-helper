@@ -296,7 +296,7 @@ def metadata(
     ] = 0,
 ) -> None:
     """
-    Given an extract match (EVNT), find the cross section, filter efficiency, etc.
+    Given an exact match (EVNT), find the cross section, filter efficiency, etc.
     """
     from .ami import get_metadata
 
