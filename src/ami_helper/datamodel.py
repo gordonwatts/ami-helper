@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -92,7 +92,7 @@ class CentralPageHashAddress:
     scope: str
     hash_tags: Tuple[Optional[str], ...]
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the CentralPageHashAddress to a dictionary for JSON serialization.
 
@@ -102,7 +102,7 @@ class CentralPageHashAddress:
         return {"scope": self.scope, "hash_tags": list(self.hash_tags)}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, any]) -> "CentralPageHashAddress":
+    def from_dict(cls, data: Dict[str, Any]) -> "CentralPageHashAddress":
         """
         Create a CentralPageHashAddress from a dictionary (e.g., from JSON).
 

@@ -6,7 +6,7 @@ import diskcache
 import pyAMI.client
 import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
-from pypika import Field, MSSQLQuery, Table
+from pypika import MSSQLQuery, Table
 from pypika.functions import Lower
 
 from ami_helper.datamodel import (
@@ -167,7 +167,7 @@ def find_missing_tag(
         .where(dataset.AMISTATUS == "VALID")
     )
 
-    # Add subquery conditions for each hashtag in hashcomb
+    # Add subquery conditions for each hashtag in hash combinations
     for n, hashtag in enumerate(s_addr.hash_tags):
         if hashtag is not None:
             hashtags_alias = Table("HASHTAGS").as_(f"h{n+1}")
@@ -204,7 +204,7 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
     """
     Produce all fully-populated CentralPageHashAddress combinations reachable from
     the provided partial address by filling missing hashtag slots. It does this by making
-    queires to AMI.
+    queries to AMI.
 
     Parameters
     ----------
@@ -231,7 +231,8 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
         # Find possible tags for the missing index
         possible_tags = find_missing_tag(current_addr, missing_index[0])
         logger.info(
-            f"Found {len(possible_tags)} hashtags for tags {', '.join([h for h in current_addr.hash_tags if h is not None])}"
+            f"Found {len(possible_tags)} hashtags for tags "
+            f"{', '.join([h for h in current_addr.hash_tags if h is not None])}"
         )
         stack.extend(possible_tags)
     return results
@@ -243,7 +244,10 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
     hash_scope_list = ",".join(f"PMGL{i+1}" for i in range(len(s_addr.hash_tags)))
     name_list = ",".join(s_addr.hash_tags)  # type: ignore
 
-    cmd = f'DatasetWBListDatasetsForHashtag -scope="{hash_scope_list}" -name="{name_list}" -operator="AND"'
+    cmd = (
+        f'DatasetWBListDatasetsForHashtag -scope="{hash_scope_list}" -name="{name_list}"'
+        ' -operator="AND"'
+    )
 
     result = execute_ami_command(cmd)
     ldns = [
@@ -259,7 +263,7 @@ def find_dids_with_name(
     """
     Search AMI for a dataset with the given name, EVNT type.
 
-    :param scope: What scope shoudl be looking for?
+    :param scope: What scope should be looking for?
     :type scope: str
     :param name: The name the dataset should contain
     :type name: str
