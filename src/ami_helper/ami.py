@@ -344,13 +344,13 @@ def find_dids_with_name(
     results: List[Tuple[str, CentralPageHashAddress]] = []
     for row in rows:
         ldn: str = row["LOGICALDATASETNAME"]  # type: ignore
-        # Build tags list with explicit Optional type to satisfy typing
-        tags: List[Optional[str]] = [
+        # Build tags tuple with explicit Optional type to satisfy typing
+        tags: Tuple[Optional[str], ...] = (
             _get_alias_value(row, 1),
             _get_alias_value(row, 2),
             _get_alias_value(row, 3),
             _get_alias_value(row, 4),
-        ]
+        )
         addr = CentralPageHashAddress(scope=scope, hash_tags=tags)
         results.append((ldn, addr))
 

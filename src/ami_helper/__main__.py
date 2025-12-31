@@ -183,7 +183,7 @@ def with_hashtags(
     requested_content = normalize_derivation_name(content)
 
     addr = CentralPageHashAddress(
-        scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]
+        scope, (hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4)
     )
 
     evnt_ldns = find_dids_with_hashtags(addr)

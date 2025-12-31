@@ -75,7 +75,7 @@ def test_find_missing_tag_sql_command_with_two_tags():
 
     # Create an address with tags at positions 0 and 2, missing at position 1
     test_addr = CentralPageHashAddress(
-        scope="mc16_13TeV", hash_tags=["tag1", None, "tag3", None]
+        scope="mc16_13TeV", hash_tags=("tag1", None, "tag3", None)
     )
 
     with patch(
@@ -115,7 +115,7 @@ def test_find_missing_tag_sql_command_with_one_tag():
 
     # Create an address with only one tag at position 0, missing at position 3
     test_addr = CentralPageHashAddress(
-        scope="mc23_13TeV", hash_tags=["onlytag", None, None, None]
+        scope="mc23_13TeV", hash_tags=("onlytag", None, None, None)
     )
 
     with patch(
@@ -148,7 +148,7 @@ def test_find_missing_tag_sql_structure():
 
     # Create address with tags at positions 0, 1, and 3; missing at position 2
     test_addr = CentralPageHashAddress(
-        scope="mc16_13TeV", hash_tags=["tag1", "tag2", None, "tag4"]
+        scope="mc16_13TeV", hash_tags=("tag1", "tag2", None, "tag4")
     )
 
     with patch(
@@ -203,7 +203,7 @@ def test_find_missing_tag_returns_addresses():
     mock_scope_tags = {"mc16": MagicMock(evgen=MagicMock(short="mc15"))}
 
     test_addr = CentralPageHashAddress(
-        scope="mc16_13TeV", hash_tags=["tag1", None, None, None]
+        scope="mc16_13TeV", hash_tags=("tag1", None, None, None)
     )
 
     with patch(
@@ -229,7 +229,7 @@ def test_find_dids_with_hashtags_command():
 
     # Create an address with all 4 hashtags filled
     test_addr = CentralPageHashAddress(
-        scope="mc23_13p6TeV", hash_tags=["Top", "TTbar", "Baseline", "PowhegPythia"]
+        scope="mc23_13p6TeV", hash_tags=("Top", "TTbar", "Baseline", "PowhegPythia")
     )
 
     with patch(
@@ -258,7 +258,7 @@ def test_find_dids_with_hashtags_returns_filtered_ldns():
     ]
 
     test_addr = CentralPageHashAddress(
-        scope="mc23_13p6TeV", hash_tags=["Top", "TTbar", "Baseline", "PowhegPythia"]
+        scope="mc23_13p6TeV", hash_tags=("Top", "TTbar", "Baseline", "PowhegPythia")
     )
 
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_dom_object):
@@ -388,13 +388,13 @@ def test_find_dids_with_name_returns_results():
         ldn1, addr1 = result[0]
         assert ldn1 == "mc16_13TeV.123456.dataset1.EVNT"
         assert addr1.scope == "mc16_13TeV"
-        assert addr1.hash_tags == ["Top", "TTbar", "Baseline", "PowhegPythia"]
+        assert addr1.hash_tags == ("Top", "TTbar", "Baseline", "PowhegPythia")
 
         # Check second result
         ldn2, addr2 = result[1]
         assert ldn2 == "mc16_13TeV.654321.dataset2.EVNT"
         assert addr2.scope == "mc16_13TeV"
-        assert addr2.hash_tags == ["Top", "SingleTop", "Wt", "PowhegPythia"]
+        assert addr2.hash_tags == ("Top", "SingleTop", "Wt", "PowhegPythia")
 
 
 def test_find_dids_with_name_with_none_hashtags():

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -82,7 +82,7 @@ SCOPE_TAGS: Dict[str, ScopeTags] = {
 scopetag_dict = SCOPE_TAGS
 
 
-@dataclass
+@dataclass(frozen=True)
 class CentralPageHashAddress:
     """
     Hash tag address paried with a scope - gives a "unique" set of
@@ -90,7 +90,7 @@ class CentralPageHashAddress:
     """
 
     scope: str
-    hash_tags: List[Optional[str]]
+    hash_tags: Tuple[Optional[str], ...]
 
 
 _hash_scope_index = {
@@ -111,7 +111,7 @@ def make_central_page_hash_address(
         )
     hash_values: List[Optional[str]] = [None] * 4
     hash_values[index] = hash_value
-    return CentralPageHashAddress(scope=scope, hash_tags=hash_values)
+    return CentralPageHashAddress(scope=scope, hash_tags=tuple(hash_values))
 
 
 def add_hash_to_addr(
@@ -122,9 +122,9 @@ def add_hash_to_addr(
         raise ValueError(
             f"Unknown hash scope: {hash_scope} (legal ones: {_hash_scope_index.keys()})"
         )
-    hash_values = addr.hash_tags.copy()  # Create a copy to avoid mutation
+    hash_values = list(addr.hash_tags)  # Convert tuple to list for mutation
     hash_values[index] = hash_value
-    return CentralPageHashAddress(scope=addr.scope, hash_tags=hash_values)
+    return CentralPageHashAddress(scope=addr.scope, hash_tags=tuple(hash_values))
 
 
 def get_tag_combinations(scope_short: str) -> Dict[str, List[str]]:
