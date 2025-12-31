@@ -8,8 +8,7 @@ from typing import Annotated, Any, Callable, Mapping, Sequence
 
 import typer
 
-from .datamodel import SCOPE_TAGS
-from .utils import ensure_and_import
+from .utils import ensure_and_import, normalize_derivation_name
 
 # Make sure installation has completed
 ensure_and_import("pyAMI_atlas")
@@ -179,21 +178,12 @@ def with_hashtags(
     """
     from .ami import find_dids_with_hashtags
     from .datamodel import CentralPageHashAddress
-    from .ruicio import find_datasets
+    from .rucio import find_datasets
 
-    # Map short names to full DAOD names, but allow any custom value
-    content_mapping = {
-        "evnt": "EVNT",
-        "phys": "DAOD_PHYS",
-        "physlite": "DAOD_PHYSLITE",
-        "EVNT": "EVNT",
-        "PHYS": "DAOD_PHYS",
-        "PHYSLITE": "DAOD_PHYSLITE",
-    }
-    requested_content = content_mapping.get(content, content)
+    requested_content = normalize_derivation_name(content)
 
     addr = CentralPageHashAddress(
-        scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]
+        scope, (hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4)
     )
 
     evnt_ldns = find_dids_with_hashtags(addr)
@@ -209,7 +199,6 @@ def with_hashtags(
                 print(f"  {found_type}:")
                 for found_ldn in found_ldns:
                     print(f"    {found_ldn}")
-        ldns = []
 
 
 @files_app.command("with-name")
@@ -307,7 +296,7 @@ def metadata(
     ] = 0,
 ) -> None:
     """
-    Given an extact match (EVNT), find the cross section, filter efficiency, etc.
+    Given an exact match (EVNT), find the cross section, filter efficiency, etc.
     """
     from .ami import get_metadata
 
@@ -336,7 +325,7 @@ def Provenance(
     ] = 0,
 ):
     """
-    Given an extact match dataset, find the history of the dataset.
+    Given an exact match dataset, find the history of the dataset.
     """
     from .ami import get_provenance
 
@@ -382,7 +371,7 @@ def with_datatype(
 
     from .ami import get_by_datatype
     from .datamodel import get_campaign
-    from .ruicio import has_files
+    from .rucio import has_files
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
