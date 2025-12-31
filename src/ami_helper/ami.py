@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Tuple
 
 import diskcache
 import pyAMI.client
-import pyAMI_atlas.api as AtlasAPI
 from pyAMI.object import DOMObject
 from pypika import MSSQLQuery, Table
 from pypika.functions import Lower
@@ -64,6 +63,7 @@ def execute_ami_command(cmd: str) -> DOMObject:
     logger.debug(f"Cache miss, executing AMI command: {cmd}")
 
     # Execute the command
+    import pyAMI_atlas.api as AtlasAPI
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
     result = ami.execute(cmd, format="dom_object")
