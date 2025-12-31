@@ -36,7 +36,7 @@ jobs:
             TAG=$(jq -r .release.tag_name < "$GITHUB_EVENT_PATH")
           fi
           echo "Using tag version: $TAG"
-          cat > [__about__.py](http://_vscodecontentref_/0) << EOF
+          cat > src/ami_helper/__about__.py << EOF
           # SPDX-FileCopyrightText: 2025 Gordon Watts <gwatts@uw.edu>
           #
           # SPDX-License-Identifier: MIT
