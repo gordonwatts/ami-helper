@@ -38,7 +38,9 @@ def set_cache(cache: Optional[diskcache.Cache]) -> None:
     _cache = cache
 
 
-def execute_ami_command(cmd: str) -> DOMObject:
+def execute_ami_command(
+    cmd: str, rowset_type: Optional[str] = None
+) -> List[Dict[str, str]]:
     """
     Execute an AMI command with caching.
 
@@ -48,9 +50,8 @@ def execute_ami_command(cmd: str) -> DOMObject:
         The AMI command string to execute.
 
     Returns
-    -------
-    DOMObject
-        The AMI result as a DOMObject.
+    List[Dict[str, str]]
+        The AMI result as a list of dictionaries.
     """
     cache = get_cache()
 
@@ -64,15 +65,20 @@ def execute_ami_command(cmd: str) -> DOMObject:
 
     # Execute the command
     import pyAMI_atlas.api as AtlasAPI
+
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
     result = ami.execute(cmd, format="dom_object")
     assert isinstance(result, DOMObject)
 
-    # Cache the result
-    cache.set(cmd, result)
+    # Only return the rows without all the complex information.
+    returned_rows = result.get_rows(rowset_type=rowset_type)
+    rows = [{str(k): str(v) for k, v in r.items()} for r in returned_rows]
 
-    return result
+    # Cache the result
+    cache.set(cmd, rows)
+
+    return rows
 
 
 def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]:
@@ -117,8 +123,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         f'-mql="{query_text}"'
     )
 
-    result = execute_ami_command(cmd)
-    rows = result.get_rows()
+    rows = execute_ami_command(cmd)
     logger.info(f"Found {len(rows)} hashtags matching '{search_string}'")
     return [
         make_central_page_hash_address(scope, row["SCOPE"], row["NAME"]) for row in rows
@@ -192,8 +197,7 @@ def find_missing_tag(
         f'-sql="{query_text}"'
     )
 
-    result = execute_ami_command(cmd)
-    rows = result.get_rows()
+    rows = execute_ami_command(cmd)
     return [
         add_hash_to_addr(s_addr, row["HASHTAGS.SCOPE"], row["HASHTAGS.NAME"])
         for row in rows
@@ -249,10 +253,8 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
         ' -operator="AND"'
     )
 
-    result = execute_ami_command(cmd)
-    ldns = [
-        str(res["ldn"]) for res in result.get_rows() if s_addr.scope in str(res["ldn"])
-    ]
+    rows = execute_ami_command(cmd)
+    ldns = [str(res["ldn"]) for res in rows if s_addr.scope in str(res["ldn"])]
 
     return ldns
 
@@ -333,8 +335,7 @@ def find_dids_with_name(
         f'-sql="{query_text}"'
     )
 
-    result = execute_ami_command(cmd)
-    rows = result.get_rows()
+    rows = execute_ami_command(cmd)
     if len(rows) == results_limit:
         logger.warning(
             f"Query for datasets with name '{name}' returned {results_limit} results - "
@@ -395,8 +396,7 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
         f'-sql="{query_text}"'
     )
 
-    result = execute_ami_command(cmd)
-    rows = result.get_rows()
+    rows = execute_ami_command(cmd)
     if len(rows) == 0:
         # Dataset not found at the given scope/name
         raise RuntimeError(f"Dataset '{name}' not found in scope '{scope}'")
@@ -430,10 +430,10 @@ def get_provenance(scope: str, ds_name: str) -> List[str]:
     """
 
     cmd = f"GetDatasetProvenance -logicalDatasetName={ds_name}"
-    result = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, "edge")
 
     def find_backone(name: str) -> Optional[str]:
-        for r in result.get_rows("edge"):
+        for r in rows:
             if r["destination"] == name:
                 return r["source"]
 
@@ -470,6 +470,6 @@ def get_by_datatype(scope, run_number: int, datatype):
         f'-sql="{query_text}"'
     )
 
-    result = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd)
 
-    return [r["LOGICALDATASETNAME"] for r in result.get_rows()]
+    return [r["LOGICALDATASETNAME"] for r in rows]
