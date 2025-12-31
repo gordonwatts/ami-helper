@@ -27,7 +27,16 @@ def init_atlas_access():
         "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/aarch64-Linux/rucio-clients"
     ).rglob("rucio.cfg"):
         rucio_homes.append(path.parent.parent)
-    rucio_home = sorted(rucio_homes, key=lambda p: str(p))[-1]
+
+    init_rucio = True
+    if len(rucio_homes) == 0:
+        logging.error(
+            "Could not find rucio config file! Will continue, but any direct rucio access will fail"
+        )
+        rucio_home = Path("/tmp/nonexistent_rucio_home")
+        init_rucio = False
+    else:
+        rucio_home = sorted(rucio_homes, key=lambda p: str(p))[-1]
     os.environ["RUCIO_HOME"] = str(rucio_home)
 
     uid = os.getuid()
@@ -38,13 +47,18 @@ def init_atlas_access():
         "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
     )
 
+    # Setup the g_rucio
+    if init_rucio:
+        global g_rucio
+        g_rucio = Client()
+
 
 # If we are importing this, we'll be using rucio - so init atlas access
 init_atlas_access()
 
 
-# The rucio client (for effiency, create once)
-g_rucio = Client()
+# The rucio client (for efficiency, create once)
+g_rucio = None
 
 
 def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
