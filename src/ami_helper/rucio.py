@@ -49,7 +49,7 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
     step = g_step_info.get(content, "deriv")
     if step == "deriv" and not content.startswith("DAOD_"):
         raise ValueError(
-            f"Content '{content}' not recognised as a derivation name!"
+            f"Content '{content}' not recognized as a derivation name!"
             " Must start with DAOD_."
         )
     stepformat = f".{step}.{content}."
