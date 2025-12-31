@@ -178,7 +178,7 @@ def with_hashtags(
     """
     from .ami import find_dids_with_hashtags
     from .datamodel import CentralPageHashAddress
-    from .ruicio import find_datasets
+    from .rucio import find_datasets
 
     requested_content = normalize_derivation_name(content)
 
@@ -371,7 +371,7 @@ def with_datatype(
 
     from .ami import get_by_datatype
     from .datamodel import get_campaign
-    from .ruicio import has_files
+    from .rucio import has_files
 
     ds_list = get_by_datatype(scope, run_number, datatype)
 
