@@ -40,11 +40,8 @@ def init_atlas_access():
 
 
 # If we are importing this, we'll be using rucio - so init atlas access
-init_atlas_access()
-
-
-# The rucio client (for effiency, create once)
 g_rucio = Client()
+init_atlas_access()
 
 
 def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
