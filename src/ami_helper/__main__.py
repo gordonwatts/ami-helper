@@ -325,7 +325,7 @@ def Provenance(
     ] = 0,
 ):
     """
-    Given an extract match dataset, find the history of the dataset.
+    Given an exact match dataset, find the history of the dataset.
     """
     from .ami import get_provenance
 

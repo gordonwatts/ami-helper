@@ -97,7 +97,7 @@ class CentralPageHashAddress:
         Convert the CentralPageHashAddress to a dictionary for JSON serialization.
 
         :return: Dictionary with 'scope' and 'hash_tags' keys
-        :rtype: Dict[str, any]
+        :rtype: Dict[str, Any]
         """
         return {"scope": self.scope, "hash_tags": list(self.hash_tags)}
 
@@ -107,7 +107,7 @@ class CentralPageHashAddress:
         Create a CentralPageHashAddress from a dictionary (e.g., from JSON).
 
         :param data: Dictionary with 'scope' and 'hash_tags' keys
-        :type data: Dict[str, any]
+        :type data: Dict[str, Any]
         :return: A new CentralPageHashAddress instance
         :rtype: CentralPageHashAddress
         """
