@@ -27,12 +27,16 @@ jobs:
           python -m pip install --upgrade pip hatch twine
 
       - name: Inject tag version into package
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'release' && github.event.release.tag_name != '')
         run: |
           echo "Detected ref: $GITHUB_REF"
-          TAG=${GITHUB_REF#refs/tags/}
+          if [ -n "$GITHUB_REF" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG=$(jq -r .release.tag_name < "$GITHUB_EVENT_PATH")
+          fi
           echo "Using tag version: $TAG"
-          cat > src/ami_helper/__about__.py << EOF
+          cat > [__about__.py](http://_vscodecontentref_/0) << EOF
           # SPDX-FileCopyrightText: 2025 Gordon Watts <gwatts@uw.edu>
           #
           # SPDX-License-Identifier: MIT
