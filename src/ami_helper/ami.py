@@ -362,6 +362,14 @@ def find_dids_with_name(
     return results
 
 
+def get_short_scope(scope: str) -> str:
+    s_name = scope.split("_")[0]
+    scope_info = SCOPE_TAGS.get(s_name, None)
+    if scope_info is None:
+        return s_name
+    return scope_info.evgen.short
+
+
 def get_metadata(scope: str, name: str) -> Dict[str, str]:
     """
     Get metadata for a dataset with the given name.
@@ -388,7 +396,7 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
         .where(dataset.AMISTATUS == "VALID")
     )
 
-    evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
+    evgen_short = get_short_scope(scope)
     query_text = str(q).replace('"', "`")
     cmd = (
         f'SearchQuery -catalog="{evgen_short}_001:production" '
@@ -462,7 +470,7 @@ def get_by_datatype(scope, run_number: int, datatype):
         .distinct()
     )
 
-    evgen_short = SCOPE_TAGS[scope.split("_")[0]].evgen.short
+    evgen_short = get_short_scope(scope)
     query_text = str(q).replace('"', "`")
     cmd = (
         f'SearchQuery -catalog="{evgen_short}_001:production" '

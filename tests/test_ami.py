@@ -571,6 +571,26 @@ def test_get_metadata_raises_on_not_found():
     assert "mc23_13p6TeV.999999.nonedataset.EVNT" in msg
 
 
+def test_get_metadata_works_with_unknown_scope():
+    """get_metadata should guess when there is a request for an unknown scope."""
+    mock_rows = [
+        {
+            "PHYSICSCOMMENT": "X",
+            "PHYSICSSHORT": "Y",
+            "GENERATORNAME": "Z",
+            "GENFILTEFF": "0.1",
+            "CROSSSECTION": "0.2",
+        }
+    ]
+    mock_scope_tags = {"mc23": MagicMock(evgen=MagicMock(short="mc23"))}
+
+    with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
+        "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
+    ):
+        ds = "mc15_8TeV.999999.nonedataset.EVNT"
+        get_metadata("mc15_8TeV", ds)
+
+
 def test_get_metadata_asserts_on_multiple_rows():
     """get_metadata should assert if AMI returns multiple rows (ambiguous)."""
     mock_rows = [
