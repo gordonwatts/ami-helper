@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
 import logging
-import sys, subprocess, importlib, importlib.util
+import sys
+import subprocess
+import importlib
+import importlib.util
 
 
 def _try_install_pip(pkg) -> bool:

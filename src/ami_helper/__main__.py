@@ -8,7 +8,6 @@ from typing import Annotated, Any, Callable, Mapping, Sequence
 
 import typer
 
-from .datamodel import SCOPE_TAGS
 from .utils import ensure_and_import, normalize_derivation_name
 
 # Make sure installation has completed
