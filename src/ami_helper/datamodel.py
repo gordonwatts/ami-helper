@@ -92,6 +92,27 @@ class CentralPageHashAddress:
     scope: str
     hash_tags: Tuple[Optional[str], ...]
 
+    def to_dict(self) -> Dict[str, any]:
+        """
+        Convert the CentralPageHashAddress to a dictionary for JSON serialization.
+
+        :return: Dictionary with 'scope' and 'hash_tags' keys
+        :rtype: Dict[str, any]
+        """
+        return {"scope": self.scope, "hash_tags": list(self.hash_tags)}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, any]) -> "CentralPageHashAddress":
+        """
+        Create a CentralPageHashAddress from a dictionary (e.g., from JSON).
+
+        :param data: Dictionary with 'scope' and 'hash_tags' keys
+        :type data: Dict[str, any]
+        :return: A new CentralPageHashAddress instance
+        :rtype: CentralPageHashAddress
+        """
+        return cls(scope=data["scope"], hash_tags=tuple(data["hash_tags"]))
+
 
 _hash_scope_index = {
     "PMGL1": 0,

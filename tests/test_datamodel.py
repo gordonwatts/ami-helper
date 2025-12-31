@@ -1,9 +1,11 @@
+import json
+
 import pytest
 
 from ami_helper.datamodel import (
     CentralPageHashAddress,
-    make_central_page_hash_address,
     get_campaign,
+    make_central_page_hash_address,
 )
 
 
@@ -66,3 +68,86 @@ class TestGetCampaign:
         """A dataset without recognizable tag combo should raise ValueError."""
         with pytest.raises(ValueError):
             get_campaign("mc23", "mc23_13p6TeV.some.dataset.without.tags")
+
+
+class TestCentralPageHashAddressSerialization:
+    """Tests for CentralPageHashAddress JSON serialization."""
+
+    def test_to_dict_with_all_tags(self):
+        """Test to_dict() with all hashtags filled."""
+        addr = CentralPageHashAddress(
+            scope="mc23_13p6TeV", hash_tags=("Top", "TTbar", "Baseline", "Pythia")
+        )
+        result = addr.to_dict()
+        assert result == {
+            "scope": "mc23_13p6TeV",
+            "hash_tags": ["Top", "TTbar", "Baseline", "Pythia"],
+        }
+
+    def test_to_dict_with_none_tags(self):
+        """Test to_dict() with some None hashtags."""
+        addr = CentralPageHashAddress(
+            scope="mc16_13TeV", hash_tags=("Top", None, "Baseline", None)
+        )
+        result = addr.to_dict()
+        assert result == {
+            "scope": "mc16_13TeV",
+            "hash_tags": ["Top", None, "Baseline", None],
+        }
+
+    def test_from_dict_with_all_tags(self):
+        """Test from_dict() with all hashtags filled."""
+        data = {
+            "scope": "mc23_13p6TeV",
+            "hash_tags": ["Top", "TTbar", "Baseline", "Pythia"],
+        }
+        addr = CentralPageHashAddress.from_dict(data)
+        assert addr.scope == "mc23_13p6TeV"
+        assert addr.hash_tags == ("Top", "TTbar", "Baseline", "Pythia")
+
+    def test_from_dict_with_none_tags(self):
+        """Test from_dict() with some None hashtags."""
+        data = {
+            "scope": "mc16_13TeV",
+            "hash_tags": ["Top", None, "Baseline", None],
+        }
+        addr = CentralPageHashAddress.from_dict(data)
+        assert addr.scope == "mc16_13TeV"
+        assert addr.hash_tags == ("Top", None, "Baseline", None)
+
+    def test_roundtrip_serialization(self):
+        """Test that to_dict() and from_dict() are inverses."""
+        original = CentralPageHashAddress(
+            scope="mc20_13TeV", hash_tags=("JetPhoton", "Dijet", None, "Sherpa")
+        )
+        data = original.to_dict()
+        restored = CentralPageHashAddress.from_dict(data)
+        assert restored == original
+        assert restored.scope == original.scope
+        assert restored.hash_tags == original.hash_tags
+
+    def test_json_dumps_with_to_dict(self):
+        """Test that to_dict() output can be JSON serialized."""
+        addr = CentralPageHashAddress(
+            scope="mc23_13p6TeV", hash_tags=("Top", "TTbar", "Baseline", "Pythia")
+        )
+        json_str = json.dumps(addr.to_dict())
+        assert isinstance(json_str, str)
+        # Verify it can be parsed back
+        parsed = json.loads(json_str)
+        assert parsed["scope"] == "mc23_13p6TeV"
+        assert parsed["hash_tags"] == ["Top", "TTbar", "Baseline", "Pythia"]
+
+    def test_json_roundtrip(self):
+        """Test full JSON serialization and deserialization."""
+        original = CentralPageHashAddress(
+            scope="mc16_13TeV", hash_tags=("Top", None, "Baseline", "PowhegPythia")
+        )
+        # Serialize to JSON
+        json_str = json.dumps(original.to_dict())
+        # Deserialize from JSON
+        data = json.loads(json_str)
+        restored = CentralPageHashAddress.from_dict(data)
+        # Verify equality
+        assert restored == original
+        assert hash(restored) == hash(original)
