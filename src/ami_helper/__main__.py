@@ -9,7 +9,7 @@ from typing import Annotated, Any, Callable, Mapping, Sequence
 import typer
 
 from .datamodel import SCOPE_TAGS
-from .utils import ensure_and_import
+from .utils import ensure_and_import, normalize_derivation_name
 
 # Make sure installation has completed
 ensure_and_import("pyAMI_atlas")
@@ -181,16 +181,7 @@ def with_hashtags(
     from .datamodel import CentralPageHashAddress
     from .ruicio import find_datasets
 
-    # Map short names to full DAOD names, but allow any custom value
-    content_mapping = {
-        "evnt": "EVNT",
-        "phys": "DAOD_PHYS",
-        "physlite": "DAOD_PHYSLITE",
-        "EVNT": "EVNT",
-        "PHYS": "DAOD_PHYS",
-        "PHYSLITE": "DAOD_PHYSLITE",
-    }
-    requested_content = content_mapping.get(content, content)
+    requested_content = normalize_derivation_name(content)
 
     addr = CentralPageHashAddress(
         scope, [hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4]

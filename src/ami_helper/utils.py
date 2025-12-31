@@ -41,3 +41,24 @@ def ensure_setup():
     ensure_and_import("wheel")
     ensure_and_import("build")
     ensure_and_import("pyAMI_atlas")
+
+
+def normalize_derivation_name(content: str) -> str:
+    """
+    Map short names to full DAOD names, but allow any custom value.
+
+    Args:
+        content: Short name (e.g., 'phys') or full name (e.g., 'DAOD_PHYS')
+
+    Returns:
+        Full derivation name (e.g., 'DAOD_PHYS')
+    """
+    content_mapping = {
+        "evnt": "EVNT",
+        "phys": "DAOD_PHYS",
+        "physlite": "DAOD_PHYSLITE",
+        "EVNT": "EVNT",
+        "PHYS": "DAOD_PHYS",
+        "PHYSLITE": "DAOD_PHYSLITE",
+    }
+    return content_mapping.get(content, content)
