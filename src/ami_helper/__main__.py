@@ -296,7 +296,7 @@ def metadata(
     ] = 0,
 ) -> None:
     """
-    Given an extact match (EVNT), find the cross section, filter efficiency, etc.
+    Given an extract match (EVNT), find the cross section, filter efficiency, etc.
     """
     from .ami import get_metadata
 
@@ -325,7 +325,7 @@ def Provenance(
     ] = 0,
 ):
     """
-    Given an extact match dataset, find the history of the dataset.
+    Given an extract match dataset, find the history of the dataset.
     """
     from .ami import get_provenance
 
