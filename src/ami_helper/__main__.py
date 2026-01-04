@@ -123,6 +123,9 @@ def find_hash_tuples(
         ..., help="Scope for the search. Valid values will be shown in help."
     ),
     hashtags: str = typer.Argument(..., help="List of hashtags (at least one)"),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -140,11 +143,11 @@ def find_hash_tuples(
 
     from .ami import find_hashtag, find_hashtag_tuples
 
-    hashtag_list = find_hashtag(scope, hashtags)
+    hashtag_list = find_hashtag(scope, hashtags, ignore_cache=ignore_cache)
 
     if len(hashtag_list) > 0:
         for ht in hashtag_list:
-            all_tags = find_hashtag_tuples(ht)
+            all_tags = find_hashtag_tuples(ht, ignore_cache=ignore_cache)
             for t in all_tags:
                 print(" ".join([str(h) for h in t.hash_tags]))
 
@@ -161,6 +164,9 @@ def with_hashtags(
     content: str = typer.Option(
         "evnt",
         help="Data content of file (evnt, phys, physlite, or custom value like DAOD_LLP1)",
+    ),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
     ),
     verbose: Annotated[
         int,
@@ -186,7 +192,7 @@ def with_hashtags(
         scope, (hashtag_level1, hashtag_level2, hashtag_level3, hashtag_level4)
     )
 
-    evnt_ldns = find_dids_with_hashtags(addr)
+    evnt_ldns = find_dids_with_hashtags(addr, ignore_cache=ignore_cache)
     if requested_content == "EVNT":
         for ldn in evnt_ldns:
             print(ldn)
@@ -220,6 +226,9 @@ def with_name(
         case_sensitive=False,
         help="Choose the output format (rich, markdown, json)",
     ),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -236,7 +245,9 @@ def with_name(
     """
     from .ami import find_dids_with_name
 
-    ds = find_dids_with_name(scope, name, require_pmg=not non_cp)
+    ds = find_dids_with_name(
+        scope, name, require_pmg=not non_cp, ignore_cache=ignore_cache
+    )
 
     def _dataset_json_transform(row: Mapping[str, Any]) -> Mapping[str, Any]:
         return {
@@ -284,6 +295,9 @@ def metadata(
         case_sensitive=False,
         help="Choose the output format (rich, markdown, json)",
     ),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -300,7 +314,7 @@ def metadata(
     """
     from .ami import get_metadata
 
-    ds = get_metadata(scope, name)
+    ds = get_metadata(scope, name, ignore_cache=ignore_cache)
     metadata_rows = [{"Key": key, "Value": value} for key, value in ds.items()]
 
     render_output(metadata_rows, output_format, title=f"Metadata for {name}")
@@ -313,6 +327,9 @@ def Provenance(
         help="Scope for the search. Valid values will be shown in help. (mandatory)",
     ),
     name: str = typer.Argument(..., help="Full dataset name (exact match)"),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -329,7 +346,7 @@ def Provenance(
     """
     from .ami import get_provenance
 
-    ds_list = get_provenance(scope, name)
+    ds_list = get_provenance(scope, name, ignore_cache=ignore_cache)
 
     for ds in ds_list:
         print(ds)
@@ -354,6 +371,9 @@ def with_datatype(
         case_sensitive=False,
         help="Choose the output format (rich, markdown, json)",
     ),
+    ignore_cache: bool = typer.Option(
+        False, "--ignore-cache", help="Bypass the on-disk AMI cache."
+    ),
     verbose: Annotated[
         int,
         typer.Option(
@@ -373,7 +393,9 @@ def with_datatype(
     from .datamodel import get_campaign
     from .rucio import has_files
 
-    ds_list = get_by_datatype(scope, run_number, datatype)
+    ds_list = get_by_datatype(
+        scope, run_number, datatype, ignore_cache=ignore_cache
+    )
 
     good_ds = [ds for ds in ds_list if has_files(scope, ds)]
 

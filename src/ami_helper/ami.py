@@ -1,8 +1,5 @@
 import logging
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-
-import diskcache
 import pyAMI.client
 from pyAMI.object import DOMObject
 from pypika import MSSQLQuery, Table
@@ -14,30 +11,12 @@ from ami_helper.datamodel import (
     add_hash_to_addr,
     make_central_page_hash_address,
 )
+from ami_helper.disk_cache import diskcache_decorator
 
 logger = logging.getLogger(__name__)
 
-# Global cache instance - can be overridden for testing
-_cache: Optional[diskcache.Cache] = None
 
-
-def get_cache() -> diskcache.Cache:
-    """Get or create the AMI query cache."""
-    global _cache
-    if _cache is None:
-        cache_dir = Path.home() / ".cache" / "ami-helper"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        _cache = diskcache.Cache(str(cache_dir))
-        logger.debug(f"Initialized cache at {cache_dir}")
-    return _cache
-
-
-def set_cache(cache: Optional[diskcache.Cache]) -> None:
-    """Set the cache instance (useful for testing)."""
-    global _cache
-    _cache = cache
-
-
+@diskcache_decorator()
 def execute_ami_command(
     cmd: str, rowset_type: Optional[str] = None
 ) -> List[Dict[str, str]]:
@@ -53,18 +32,8 @@ def execute_ami_command(
     List[Dict[str, str]]
         The AMI result as a list of dictionaries.
     """
-    cache = get_cache()
-
-    # Check cache first
-    cached_result = cache.get(cmd)
-    if cached_result is not None:
-        logger.debug(f"Cache hit for command: {cmd}")
-        return cached_result  # type: ignore
-
-    logger.debug(f"Cache miss, executing AMI command: {cmd}")
-
     # Execute the command
-    import pyAMI_atlas.api as AtlasAPI
+    import pyAMI_atlas.api as AtlasAPI  # type: ignore
 
     ami = pyAMI.client.Client("atlas-replica")
     AtlasAPI.init()
@@ -75,13 +44,12 @@ def execute_ami_command(
     returned_rows = result.get_rows(rowset_type=rowset_type)
     rows = [{str(k): str(v) for k, v in r.items()} for r in returned_rows]
 
-    # Cache the result
-    cache.set(cmd, rows)
-
     return rows
 
 
-def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]:
+def find_hashtag(
+    scope: str, search_string: str, ignore_cache: bool = False
+) -> List[CentralPageHashAddress]:
     """
     Query AMI for hashtags whose NAME contains `search_string` (case-insensitive)
     and return a list of CentralPageHashAddress entries for the provided scope.
@@ -92,6 +60,8 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         Scope string used to determine the evgen short tag (e.g. "mc15_13TeV").
     search_string : str
         Substring to search for in hashtag names (case-insensitive).
+    ignore_cache : bool
+        Bypass the on-disk cache for AMI calls.
 
     Returns
     -------
@@ -123,7 +93,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
         f'-mql="{query_text}"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
     logger.info(f"Found {len(rows)} hashtags matching '{search_string}'")
     return [
         make_central_page_hash_address(scope, row["SCOPE"], row["NAME"]) for row in rows
@@ -131,7 +101,7 @@ def find_hashtag(scope: str, search_string: str) -> List[CentralPageHashAddress]
 
 
 def find_missing_tag(
-    s_addr: CentralPageHashAddress, missing_index: int
+    s_addr: CentralPageHashAddress, missing_index: int, ignore_cache: bool = False
 ) -> List[CentralPageHashAddress]:
     """
     Query AMI to find candidate hashtag values for a single missing tag position.
@@ -150,6 +120,8 @@ def find_missing_tag(
     missing_index : int
         Zero-based index of the hashtag position to fill. This maps to an AMI
         hashtag scope named "PMGL{missing_index + 1}".
+    ignore_cache : bool
+        Bypass the on-disk cache for AMI calls.
 
     Returns
     -------
@@ -197,14 +169,16 @@ def find_missing_tag(
         f'-sql="{query_text}"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
     return [
         add_hash_to_addr(s_addr, row["HASHTAGS.SCOPE"], row["HASHTAGS.NAME"])
         for row in rows
     ]
 
 
-def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashAddress]:
+def find_hashtag_tuples(
+    s_addr: CentralPageHashAddress, ignore_cache: bool = False
+) -> List[CentralPageHashAddress]:
     """
     Produce all fully-populated CentralPageHashAddress combinations reachable from
     the provided partial address by filling missing hashtag slots. It does this by making
@@ -215,6 +189,8 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
     s_addr:
         A CentralPageHashAddress that may contain empty/None entries in its
         hash_tags list. These represent missing tags to be discovered.
+    ignore_cache : bool
+        Bypass the on-disk cache for AMI calls.
 
     Returns
     -------
@@ -233,7 +209,9 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
             continue
 
         # Find possible tags for the missing index
-        possible_tags = find_missing_tag(current_addr, missing_index[0])
+        possible_tags = find_missing_tag(
+            current_addr, missing_index[0], ignore_cache=ignore_cache
+        )
         logger.info(
             f"Found {len(possible_tags)} hashtags for tags "
             f"{', '.join([h for h in current_addr.hash_tags if h is not None])}"
@@ -242,8 +220,19 @@ def find_hashtag_tuples(s_addr: CentralPageHashAddress) -> List[CentralPageHashA
     return results
 
 
-def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
-    "Find dataset IDs matching all hashtags in the provided CentralPageHashAddress."
+def find_dids_with_hashtags(
+    s_addr: CentralPageHashAddress, ignore_cache: bool = False
+) -> List[str]:
+    """
+    Find dataset IDs matching all hashtags in the provided CentralPageHashAddress.
+
+    Parameters
+    ----------
+    s_addr : CentralPageHashAddress
+        Address containing the hashtag tuple to search for.
+    ignore_cache : bool
+        Bypass the on-disk cache for AMI calls.
+    """
 
     hash_scope_list = ",".join(f"PMGL{i+1}" for i in range(len(s_addr.hash_tags)))
     name_list = ",".join(s_addr.hash_tags)  # type: ignore
@@ -253,14 +242,14 @@ def find_dids_with_hashtags(s_addr: CentralPageHashAddress) -> List[str]:
         ' -operator="AND"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
     ldns = [str(res["ldn"]) for res in rows if s_addr.scope in str(res["ldn"])]
 
     return ldns
 
 
 def find_dids_with_name(
-    scope: str, name: str, require_pmg: bool = True
+    scope: str, name: str, require_pmg: bool = True, ignore_cache: bool = False
 ) -> List[Tuple[str, CentralPageHashAddress]]:
     """
     Search AMI for a dataset with the given name, EVNT type.
@@ -271,6 +260,8 @@ def find_dids_with_name(
     :type name: str
     :param require_pmg: Demand 4 PMG hash tags (usually only PMG datasets have hashtags)
     :type require_pmg: bool
+    :param ignore_cache: Bypass the on-disk cache for AMI calls.
+    :type ignore_cache: bool
     :return: List of tuples of (dataset logical name, CentralPageHashAddress)
     :rtype: List[Tuple[str, CentralPageHashAddress]]
     """
@@ -335,7 +326,7 @@ def find_dids_with_name(
         f'-sql="{query_text}"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
     if len(rows) == results_limit:
         logger.warning(
             f"Query for datasets with name '{name}' returned {results_limit} results - "
@@ -370,7 +361,7 @@ def get_short_scope(scope: str) -> str:
     return scope_info.evgen.short
 
 
-def get_metadata(scope: str, name: str) -> Dict[str, str]:
+def get_metadata(scope: str, name: str, ignore_cache: bool = False) -> Dict[str, str]:
     """
     Get metadata for a dataset with the given name.
 
@@ -378,6 +369,8 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
     :type scope: str
     :param name: The exact name of the dataset
     :type name: str
+    :param ignore_cache: Bypass the on-disk cache for AMI calls.
+    :type ignore_cache: bool
     :return: Dictionary of metadata key-value pairs
     :rtype: Dict[str, str]
     """
@@ -404,7 +397,7 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
         f'-sql="{query_text}"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
     if len(rows) == 0:
         # Dataset not found at the given scope/name
         raise RuntimeError(f"Dataset '{name}' not found in scope '{scope}'")
@@ -425,7 +418,7 @@ def get_metadata(scope: str, name: str) -> Dict[str, str]:
     return metadata  # type: ignore
 
 
-def get_provenance(scope: str, ds_name: str) -> List[str]:
+def get_provenance(scope: str, ds_name: str, ignore_cache: bool = False) -> List[str]:
     """
     Get the provenance dataset logical names for a given dataset.
 
@@ -433,12 +426,14 @@ def get_provenance(scope: str, ds_name: str) -> List[str]:
     :type scope: str
     :param ds_name: The exact name of the dataset
     :type ds_name: str
+    :param ignore_cache: Bypass the on-disk cache for AMI calls.
+    :type ignore_cache: bool
     :return: List of provenance dataset logical names
     :rtype: List[str]
     """
 
     cmd = f"GetDatasetProvenance -logicalDatasetName={ds_name}"
-    rows = execute_ami_command(cmd, "edge")
+    rows = execute_ami_command(cmd, "edge", ignore_cache=ignore_cache)  # type: ignore
 
     def find_backone(name: str) -> Optional[str]:
         for r in rows:
@@ -457,7 +452,19 @@ def get_provenance(scope: str, ds_name: str) -> List[str]:
     return result_names
 
 
-def get_by_datatype(scope, run_number: int, datatype):
+def get_by_datatype(scope, run_number: int, datatype, ignore_cache: bool = False):
+    """
+    Get dataset logical names for a run number and datatype.
+
+    :param scope: What scope should be looking for?
+    :type scope: str
+    :param run_number: Run number of the dataset to look up.
+    :type run_number: int
+    :param datatype: Exact match of data type (DAOD_PHYSLITE, AOD, etc.)
+    :type datatype: str
+    :param ignore_cache: Bypass the on-disk cache for AMI calls.
+    :type ignore_cache: bool
+    """
     dataset = Table("DATASET")
     q = MSSQLQuery.from_(dataset)
     q = (
@@ -478,6 +485,6 @@ def get_by_datatype(scope, run_number: int, datatype):
         f'-sql="{query_text}"'
     )
 
-    rows = execute_ami_command(cmd)
+    rows = execute_ami_command(cmd, ignore_cache=ignore_cache)  # type: ignore
 
     return [r["LOGICALDATASETNAME"] for r in rows]
