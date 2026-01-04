@@ -1,8 +1,5 @@
 import re
-import tempfile
 from unittest.mock import MagicMock, patch
-
-import diskcache
 import pytest
 
 from src.ami_helper.ami import (
@@ -12,20 +9,8 @@ from src.ami_helper.ami import (
     find_missing_tag,
     get_metadata,
     get_provenance,
-    set_cache,
 )
 from src.ami_helper.datamodel import CentralPageHashAddress
-
-
-@pytest.fixture(autouse=True)
-def temp_cache():
-    """Create a temporary cache for each test and clean it up after."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cache = diskcache.Cache(tmpdir)
-        set_cache(cache)
-        yield cache
-        cache.close()
-        set_cache(None)  # Reset to default after test
 
 
 def test_find_hashtag_returns_names():
@@ -39,7 +24,7 @@ def test_find_hashtag_returns_names():
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
-        result = find_hashtag("scope_extra", "fork")
+        result = find_hashtag("scope_extra", "fork", ignore_cache=True)
         assert len(result) == 2
         assert all("scope_extra" == r.scope for r in result)
         assert result[0].hash_tags[0] == "tag1"
@@ -54,13 +39,13 @@ def test_find_hashtag_sql_command():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_hashtag("scope_extra", "fork")
+        find_hashtag("scope_extra", "fork", ignore_cache=True)
         expected_cmd = (
             'SearchQuery -catalog="short_001:production" '
             '-entity="HASHTAGS" '
             "-mql=\"SELECT DISTINCT `NAME`,`SCOPE` WHERE LOWER(`NAME`) LIKE '%fork%'\""
         )
-        mock_execute.assert_called_once_with(expected_cmd)
+        mock_execute.assert_called_once_with(expected_cmd, ignore_cache=True)
 
 
 def test_find_missing_tag_sql_command_with_two_tags():
@@ -77,7 +62,7 @@ def test_find_missing_tag_sql_command_with_two_tags():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_missing_tag(test_addr, missing_index=1)
+        find_missing_tag(test_addr, missing_index=1, ignore_cache=True)
 
         # Verify the SQL command structure
         mock_execute.assert_called_once()
@@ -116,7 +101,7 @@ def test_find_missing_tag_sql_command_with_one_tag():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_missing_tag(test_addr, missing_index=3)
+        find_missing_tag(test_addr, missing_index=3, ignore_cache=True)
 
         # Verify the SQL command structure
         mock_execute.assert_called_once()
@@ -148,7 +133,7 @@ def test_find_missing_tag_sql_structure():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_missing_tag(test_addr, missing_index=2)
+        find_missing_tag(test_addr, missing_index=2, ignore_cache=True)
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -202,7 +187,7 @@ def test_find_missing_tag_returns_addresses():
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
-        result = find_missing_tag(test_addr, missing_index=1)
+        result = find_missing_tag(test_addr, missing_index=1, ignore_cache=True)
 
         # Should return 2 addresses
         assert len(result) == 2
@@ -227,7 +212,7 @@ def test_find_dids_with_hashtags_command():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute:
-        find_dids_with_hashtags(test_addr)
+        find_dids_with_hashtags(test_addr, ignore_cache=True)
 
         # Verify the command structure
         mock_execute.assert_called_once()
@@ -253,7 +238,7 @@ def test_find_dids_with_hashtags_returns_filtered_ldns():
     )
 
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows):
-        result = find_dids_with_hashtags(test_addr)
+        result = find_dids_with_hashtags(test_addr, ignore_cache=True)
 
         # Should only return ldns matching the scope
         assert len(result) == 2
@@ -271,7 +256,9 @@ def test_find_dids_with_name_require_pmg_true():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_dids_with_name("mc16_13TeV", "ttbar", require_pmg=True)
+        find_dids_with_name(
+            "mc16_13TeV", "ttbar", require_pmg=True, ignore_cache=True
+        )
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -314,7 +301,9 @@ def test_find_dids_with_name_require_pmg_false():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_dids_with_name("mc23_13p6TeV", "singletop", require_pmg=False)
+        find_dids_with_name(
+            "mc23_13p6TeV", "singletop", require_pmg=False, ignore_cache=True
+        )
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -367,7 +356,9 @@ def test_find_dids_with_name_returns_results():
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
-        result = find_dids_with_name("mc16_13TeV", "ttbar", require_pmg=True)
+        result = find_dids_with_name(
+            "mc16_13TeV", "ttbar", require_pmg=True, ignore_cache=True
+        )
 
         # Should return 2 tuples
         assert len(result) == 2
@@ -402,7 +393,9 @@ def test_find_dids_with_name_with_none_hashtags():
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
-        result = find_dids_with_name("mc23_13p6TeV", "test", require_pmg=False)
+        result = find_dids_with_name(
+            "mc23_13p6TeV", "test", require_pmg=False, ignore_cache=True
+        )
 
         # Should return 1 tuple
         assert len(result) == 1
@@ -425,7 +418,7 @@ def test_find_dids_with_name_sql_structure():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
-        find_dids_with_name("mc21_13TeV", "zprime", require_pmg=True)
+        find_dids_with_name("mc21_13TeV", "zprime", require_pmg=True, ignore_cache=True)
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -462,7 +455,7 @@ def test_find_dids_with_name_scope_parsing():
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         # Pass a scope with underscore - should split and use first part
-        find_dids_with_name("mc20_13TeV", "test", require_pmg=True)
+        find_dids_with_name("mc20_13TeV", "test", require_pmg=True, ignore_cache=True)
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -492,7 +485,7 @@ def test_get_metadata_returns_friendly_mapping():
             "mc16_13TeV.304823.MadGraphPythia8EvtGen_A14NNPDF23LO_"
             "HSS_LLP_mH1000_mS400_lt9m.evgen.EVNT.e5102"
         )
-        md = get_metadata("mc16_13TeV", dataset_name)
+        md = get_metadata("mc16_13TeV", dataset_name, ignore_cache=True)
 
         # Keys should be user-friendly names
         assert md == {
@@ -522,7 +515,7 @@ def test_get_metadata_builds_expected_command():
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute, patch("src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags):
         dataset_name = "mc16_13TeV.123456.test.EVNT"
-        get_metadata("mc16_13TeV", dataset_name)
+        get_metadata("mc16_13TeV", dataset_name, ignore_cache=True)
 
         mock_execute.assert_called_once()
         actual_cmd = mock_execute.call_args[0][0]
@@ -563,7 +556,7 @@ def test_get_metadata_raises_on_not_found():
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ), pytest.raises(RuntimeError) as exc:
         ds = "mc23_13p6TeV.999999.nonedataset.EVNT"
-        get_metadata("mc23_13p6TeV", ds)
+        get_metadata("mc23_13p6TeV", ds, ignore_cache=True)
 
     msg = str(exc.value)
     assert "not found" in msg
@@ -588,7 +581,7 @@ def test_get_metadata_works_with_unknown_scope():
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ):
         ds = "mc15_8TeV.999999.nonedataset.EVNT"
-        get_metadata("mc15_8TeV", ds)
+        get_metadata("mc15_8TeV", ds, ignore_cache=True)
 
 
 def test_get_metadata_asserts_on_multiple_rows():
@@ -615,7 +608,9 @@ def test_get_metadata_asserts_on_multiple_rows():
     with patch("src.ami_helper.ami.execute_ami_command", return_value=mock_rows), patch(
         "src.ami_helper.ami.SCOPE_TAGS", mock_scope_tags
     ), pytest.raises(AssertionError) as exc:
-        get_metadata("mc16_13TeV", "mc16_13TeV.123456.something.EVNT")
+        get_metadata(
+            "mc16_13TeV", "mc16_13TeV.123456.something.EVNT", ignore_cache=True
+        )
 
     assert "Expected exactly one dataset" in str(exc.value)
 
@@ -636,11 +631,13 @@ def test_get_provenance_returns_chain_and_builds_command():
     with patch(
         "src.ami_helper.ami.execute_ami_command", return_value=mock_rows
     ) as mock_execute:
-        result = get_provenance("mc23_13p6TeV", ds_name)
+        result = get_provenance("mc23_13p6TeV", ds_name, ignore_cache=True)
 
         # Verify AMI command with rowset_type parameter
         expected_cmd = f"GetDatasetProvenance -logicalDatasetName={ds_name}"
-        mock_execute.assert_called_once_with(expected_cmd, "edge")
+        mock_execute.assert_called_once_with(
+            expected_cmd, "edge", ignore_cache=True
+        )
 
         # Expect the chain in order of discovery: parent then grandparent
         assert result == ["parent1", "grandparent"]
