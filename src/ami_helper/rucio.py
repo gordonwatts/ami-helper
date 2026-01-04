@@ -58,10 +58,6 @@ g_rucio = None
 init_atlas_access()
 
 
-# The rucio client (for efficiency, create once)
-g_rucio = None
-
-
 def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
     # What step and content do we want to go after?
     step = g_step_info.get(content, "deriv")
