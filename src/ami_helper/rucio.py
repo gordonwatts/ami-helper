@@ -45,10 +45,20 @@ def init_atlas_access():
     os.environ.setdefault("X509_USER_PROXY", f"/tmp/x509up_u{uid}")
 
     os.environ.setdefault("RUCIO_AUTH_TYPE", "x509_proxy")
-    os.environ.setdefault(
-        "X509_CERT_DIR",
-        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates",
-    )
+
+    # Find cert directory
+    cvmfs_cert_dir = "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
+    fallback_cert_dir = "/etc/grid-security/certificates/"
+
+    if Path(cvmfs_cert_dir).exists():
+        os.environ.setdefault("X509_CERT_DIR", cvmfs_cert_dir)
+    elif Path(fallback_cert_dir).exists():
+        os.environ.setdefault("X509_CERT_DIR", fallback_cert_dir)
+    else:
+        logging.error(
+            "X509 cert dir not set, can't find certificates, g_rucio is going to fail when used"
+        )
+        init_rucio = False
 
     # Setup the g_rucio
     if init_rucio:
