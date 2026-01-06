@@ -23,6 +23,8 @@ def init_atlas_access():
 
     # Find the rucio config file
     rucio_homes = []
+    if Path("/opt/rucio/etc/rucio.cfg").exists():
+        rucio_homes.append(Path("/opt/rucio"))
     for path in Path(
         "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/aarch64-Linux/rucio-clients"
     ).rglob("rucio.cfg"):
