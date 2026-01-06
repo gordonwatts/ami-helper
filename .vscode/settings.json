@@ -21,6 +21,7 @@
         "getuid",
         "ldns",
         "LOGICALDATASETNAME",
+        "lsetup",
         "newtag",
         "NNPDF",
         "nonedataset",

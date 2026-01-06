@@ -33,7 +33,8 @@ def init_atlas_access():
     init_rucio = True
     if len(rucio_homes) == 0:
         logging.error(
-            "Could not find rucio config file! Will continue, but any direct rucio access will fail"
+            "Could not find rucio config file! Will continue, but any direct "
+            "rucio access will fail"
         )
         rucio_home = Path("/tmp/nonexistent_rucio_home")
         init_rucio = False
@@ -64,7 +65,10 @@ def init_atlas_access():
         )
 
     # Find cert directory
-    cvmfs_cert_dir = "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
+    cvmfs_cert_dir = (
+        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/"
+        "grid-security-emi/certificates"
+    )
     fallback_cert_dir = "/etc/grid-security/certificates/"
 
     if Path(cvmfs_cert_dir).exists():
@@ -96,7 +100,7 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
             f"Content '{content}' not recognized as a derivation name!"
             " Must start with DAOD_."
         )
-    stepformat = f".{step}.{content}."
+    step_format = f".{step}.{content}."
 
     # Change the ldn into a search string for rucio
     scope_short = scope.split("_")[0]
@@ -110,7 +114,7 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
         for tag in tag_comb:
             rucio_search_string = (
                 ldn.replace(f"{evgen_short}_", f"{reco_short}_").replace(
-                    ".evgen.EVNT.", stepformat
+                    ".evgen.EVNT.", step_format
                 )
                 + tag
                 + "%"
@@ -118,6 +122,7 @@ def find_datasets(ldn: str, scope: str, content: str) -> Dict[str, List[str]]:
 
         logging.debug(f"Rucio search string: {rucio_search_string}")
         # Grab all the did's from rucio that have files
+        assert g_rucio is not None, "Rucio client not initialized!"
         dids = [
             x
             for x in g_rucio.list_dids(
@@ -140,6 +145,7 @@ def has_files(scope: str, ds_name: str):
     :param ds_name: Description
     :type ds_name: str
     """
+    assert g_rucio is not None, "Rucio client not initialized!"
     try:
         return len(list(g_rucio.list_content(scope, ds_name))) > 0
     except DataIdentifierNotFound:
