@@ -37,14 +37,15 @@ def init_atlas_access():
         init_rucio = False
     else:
         rucio_home = sorted(rucio_homes, key=lambda p: str(p))[-1]
-    os.environ["RUCIO_HOME"] = str(rucio_home)
+    os.environ.setdefault("RUCIO_HOME", str(rucio_home))
 
     uid = os.getuid()
-    os.environ["X509_USER_PROXY"] = f"/tmp/x509up_u{uid}"
+    os.environ.setdefault("X509_USER_PROXY", f"/tmp/x509up_u{uid}")
 
-    os.environ["RUCIO_AUTH_TYPE"] = "x509_proxy"
-    os.environ["X509_CERT_DIR"] = (
-        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
+    os.environ.setdefault("RUCIO_AUTH_TYPE", "x509_proxy")
+    os.environ.setdefault(
+        "X509_CERT_DIR",
+        "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates",
     )
 
     # Setup the g_rucio
