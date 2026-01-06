@@ -46,6 +46,23 @@ def init_atlas_access():
 
     os.environ.setdefault("RUCIO_AUTH_TYPE", "x509_proxy")
 
+    # Setup rucio account name - the user really has to do this. We can
+    # guess, but depending on the environment, it may be very wrong.
+    if "RUCIO_ACCOUNT" not in os.environ:
+        import getpass
+
+        default_account = os.environ.get("USER")
+        if not default_account:
+            try:
+                default_account = getpass.getuser()
+            except Exception:
+                default_account = "unknown"
+        os.environ["RUCIO_ACCOUNT"] = default_account
+        logging.warning(
+            f"RUCIO_ACCOUNT not set; defaulting to '{default_account}'. If this does not match "
+            "your X509 cert, rucio operations may fail later on."
+        )
+
     # Find cert directory
     cvmfs_cert_dir = "/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/etc/grid-security-emi/certificates"
     fallback_cert_dir = "/etc/grid-security/certificates/"
